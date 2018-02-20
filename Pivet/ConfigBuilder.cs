@@ -146,8 +146,10 @@ namespace Pivet
                     PromptWithDefault("Enter the TNS connection name", ref conn.TNS);
                     PromptWithDefault("Enter the schema name", ref conn.Schema);
                     PromptWithDefault("Enter the username", ref conn.BootstrapParameters.User);
-                    PromptWithDefault("Enter the password", ref conn.BootstrapParameters.Password);
-
+                    string tempPassword = "";
+                    PromptWithDefault("Enter the password", ref tempPassword);
+                    conn.BootstrapParameters.Password = tempPassword;
+                    tempPassword = null;
                     break;
             }
             SaveConfig();
