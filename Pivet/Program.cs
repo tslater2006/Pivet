@@ -39,6 +39,14 @@ namespace Pivet
                     return;
                 }
             }
+            else
+            {
+                Console.Write("Found an existing config file, would you like to modify it? (y/n)");
+                if (Console.ReadLine() == "y")
+                {
+                    configFile = ConfigBuilder.RunBuilder(configFile);
+                }
+            }
 
             string j = File.ReadAllText(configFile);
             try

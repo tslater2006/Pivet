@@ -114,7 +114,7 @@ namespace Pivet
         [JsonProperty(Required = Required.Always)]
         public string User = "";
         [JsonProperty(Required = Required.Always)]
-        public string EncryptedPassword;
+        public string EncryptedPassword = "";
         [JsonIgnore]
         public string Password
         {
@@ -136,7 +136,7 @@ namespace Pivet
         public string User = "";
 
         [JsonProperty(Required = Required.Always)]
-        public string EncryptedPassword;
+        public string EncryptedPassword = "";
 
         [JsonIgnore]
         public string Password {
