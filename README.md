@@ -14,10 +14,6 @@ Pivet is built with .NET Core 2.0, in order to run Pivet you must have .NET Core
 
 TBD
 
-## Deployment
-
-Add additional notes about how to deploy this on a live system
-
 ## Built With
 
 TBD
