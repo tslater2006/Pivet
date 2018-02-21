@@ -23,7 +23,7 @@ namespace Pivet.Data.Connection
                 Environment.SetEnvironmentVariable("TNS_ADMIN", connParams.TNS_ADMIN);
             }
 
-            OracleConnection conn = new OracleConnection($"Data Source={connParams.TNS};User Id={connParams.BootstrapParameters.User}; Password={connParams.BootstrapParameters.Password}");
+            OracleConnection conn = new OracleConnection($"Data Source={connParams.TNS};User Id={connParams.BootstrapParameters.User}; Password={connParams.BootstrapParameters.Password};Connection Timeout=120");
 
             try
             {

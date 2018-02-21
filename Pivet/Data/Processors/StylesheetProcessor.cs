@@ -12,30 +12,26 @@ namespace Pivet.Data.Processors
     {
         private OracleConnection _conn;
         private List<StylesheetItem> _items = new List<StylesheetItem>();
-        private VersionState _versionState;
 
         public event ProgressHandler ProgressChanged;
 
         //public int LoadItems(OracleConnection conn, FilterConfig filters, int modifyThreshold, VersionState versionState)
-        public int LoadItems(OracleConnection conn, FilterConfig filters, VersionState versionState)
+        public int LoadItems(OracleConnection conn, FilterConfig filters)
         {
             //TODO: Store version and load last checked version
             _conn = conn;
-            _versionState = versionState;
             /* should we go by projects? */
             using (var itemLoad = new OracleCommand())
             {
-                itemLoad.Parameters.Add(new OracleParameter() { OracleDbType = OracleDbType.Int32, Value = _versionState.SSM.LastVersion });
-                itemLoad.Parameters.Add(new OracleParameter() { OracleDbType = OracleDbType.Int32, Value = _versionState.SSM.CurrentVersion });
                 //itemLoad.Parameters.Add(new OracleParameter() { OracleDbType = OracleDbType.Int32, Value = modifyThreshold });
                 itemLoad.Connection = _conn;
                 StringBuilder sb = new StringBuilder();
                 if (filters.Projects != null && filters.Projects.Count > 0)
                 {
-                    sb.Append("select B.STYLESHEETNAME, B.LASTUPDOPRID from PSPROJECTITEM A, PSSTYLSHEETDEFN B where A.OBJECTTYPE = 50 AND A.OBJECTVALUE1 = B.STYLESHEETNAME and B.VERSION > :1 AND B.VERSION <= :2 AND A.PROJECTNAME IN (");
+                    sb.Append("select B.STYLESHEETNAME, B.LASTUPDOPRID from PSPROJECTITEM A, PSSTYLSHEETDEFN B where A.OBJECTTYPE = 50 AND A.OBJECTVALUE1 = B.STYLESHEETNAME AND A.PROJECTNAME IN (");
                     for (var x = 0; x < filters.Projects.Count; x++)
                     {
-                        sb.Append(":" + (x + 3) + ",");
+                        sb.Append(":" + (x + 1) + ",");
                     }
                     sb.Length--;
                     sb.Append(")");
@@ -47,7 +43,7 @@ namespace Pivet.Data.Processors
                 }
                 else
                 {
-                    itemLoad.CommandText = "SELECT STYLESHEETNAME, LASTUPDOPRID FROM PSSTYLSHEETDEFN WHERE VERSION > :1 AND VERSION <= :2";
+                    itemLoad.CommandText = "SELECT STYLESHEETNAME, LASTUPDOPRID FROM PSSTYLSHEETDEFN";
                 }
 
                 using (var reader = itemLoad.ExecuteReader())
@@ -61,25 +57,14 @@ namespace Pivet.Data.Processors
             ApplyFilters(filters);
             return _items.Count;
         }
-        public List<ChangedItem> ProcessDeletes(string rootFolder)
+        public void ProcessDeletes(string rootFolder)
         {
-            List<ChangedItem> deletes = new List<ChangedItem>();
-
-            using (var cmd = new OracleCommand("SELECT STYLESHEETNAME FROM PSSTYLSHEETDEL WHERE VERSION > :1 and VERSION <= :2", _conn))
+            var htmlRoot = Path.Combine(rootFolder, "Stylesheets");
+            
+            if (Directory.Exists(htmlRoot))
             {
-                cmd.Parameters.Add(new OracleParameter() { OracleDbType = OracleDbType.Int32, Value = _versionState.CRM.LastVersion });
-                cmd.Parameters.Add(new OracleParameter() { OracleDbType = OracleDbType.Int32, Value = _versionState.CRM.CurrentVersion });
-
-                using (var reader = cmd.ExecuteReader())
-                {
-                    while (reader.Read())
-                    {
-                        deletes.Add(new ChangedItem() { FilePath = GetFilePathForCSS(rootFolder, reader.GetString(0)), State = ChangedItemState.DELETE });
-                    }
-                }
+                Directory.Delete(htmlRoot, true);
             }
-
-            return deletes;
         }
 
         private void ReportProgress(double progress)
@@ -110,7 +95,7 @@ namespace Pivet.Data.Processors
                 var fileName = GetFilePathForCSS(rootFolder, item.StylesheetName);
 
                 File.WriteAllText(fileName, item.GetContents(_conn));
-                changedItems.Add(new ChangedItem() { FilePath = fileName, OperatorId = item.Oprid, State = ChangedItemState.CREATE });
+                changedItems.Add(new ChangedItem() { FilePath = fileName, OperatorId = item.Oprid});
 
                 current++;
                 ReportProgress(((int)(((current / total) * 10000))/(double)100));

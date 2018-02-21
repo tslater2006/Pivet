@@ -16,7 +16,7 @@ namespace Pivet.Data.Processors
 
         public event ProgressHandler ProgressChanged;
 
-        public int LoadItems(OracleConnection conn, FilterConfig filters, VersionState versionState)
+        public int LoadItems(OracleConnection conn, FilterConfig filters)
         {
             _conn = conn;
             using (var itemLoad = new OracleCommand())
@@ -25,7 +25,6 @@ namespace Pivet.Data.Processors
                 StringBuilder sb = new StringBuilder();
                 if (filters.Projects != null && filters.Projects.Count > 0)
                 {
-                    //sb.Append("select A.FIELDNAME , A.FIELDVALUE, A.EFFDT, A.EFF_STATUS, A.XLATLONGNAME, A.XLATSHORTNAME, A.LASTUPDDTTM, A.LASTUPDOPRID from PSXLATITEM A, PSPROJECTITEM B WHERE B.OBJECTTYPE = 4 and B.OBJECTVALUE1 = A.FIELDNAME and B.OBJECTVALUE2 = A.FIELDVALUE and B.PROJECTNAME in (");
                     sb.Append("select A.FIELDNAME from PSXLATITEM A, PSPROJECTITEM B WHERE B.OBJECTTYPE = 4 and B.OBJECTVALUE1 = A.FIELDNAME and B.OBJECTVALUE2 = A.FIELDVALUE and B.PROJECTNAME in (");
                     for (var x = 0; x < filters.Projects.Count; x++)
                     {
@@ -112,7 +111,7 @@ namespace Pivet.Data.Processors
         }
             
 
-        public List<ChangedItem> ProcessDeletes(string rootFolder)
+        public void ProcessDeletes(string rootFolder)
         {
             var xlatPath = Path.Combine(rootFolder, "Translate Values");
 
@@ -121,7 +120,7 @@ namespace Pivet.Data.Processors
                 Directory.Delete(xlatPath, true);
             }
 
-            return new List<ChangedItem>();
+            
         }
 
         private void ReportProgress(double progress)
@@ -170,7 +169,7 @@ namespace Pivet.Data.Processors
                 var filePath = Path.Combine(xlatPath, set.Key + ".json");
                 File.WriteAllText(filePath, jsonText);
 
-                changedItems.Add(new ChangedItem() { FilePath = filePath, OperatorId = "Translate Values", State = ChangedItemState.CREATE });
+                changedItems.Add(new ChangedItem() { FilePath = filePath, OperatorId = "Translate Values"});
             }
             return changedItems;
         }
