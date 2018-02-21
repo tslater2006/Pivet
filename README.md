@@ -1,8 +1,40 @@
 # Pivet
-Peoplesoft Versioning Tool
 
-This is a work in progress versioning utility for PeopleSoft. 
+Pivet allows for git-based version control for PeopleSoft definitions. It has built in support for a variety of definition types as well as it allows you to configure specific tables to be version controlled.
 
-It is under active development and should not be used in a production setting yet.
+## Getting Started
 
-If you have suggestions/questions feel free to find me on the psadmin.io slack channel in #code
+These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
+
+### Prerequisites
+
+Pivet is built with .NET Core 2.0, in order to run Pivet you must have .NET Core installed.
+
+### Installing
+
+TBD
+
+## Deployment
+
+Add additional notes about how to deploy this on a live system
+
+## Built With
+
+TBD
+
+## Contributing
+
+TBD
+
+## Authors
+
+TBD
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
+
+## Acknowledgments
+
+TBD
+
