@@ -15,16 +15,14 @@ namespace Pivet.Data.Processors
     {
         private OracleConnection _conn;
         private List<PeopleCodeItem> selectedItems = new List<PeopleCodeItem>();
-        private VersionState version;
 
         public event ProgressHandler ProgressChanged;
 
         //public int LoadItems(OracleConnection conn, FilterConfig filters, int modifyThreshold, VersionState versionState)
-        public int LoadItems(OracleConnection conn, FilterConfig filters, VersionState versionState)
+        public int LoadItems(OracleConnection conn, FilterConfig filters)
         {
             Logger.Write("Loading Peoplecode Definitions.");
             _conn = conn;
-            version = versionState;
             LoadAllItemsFromDB();
 
             if (filters.Projects != null && filters.Projects.Count > 0)
@@ -72,7 +70,7 @@ namespace Pivet.Data.Processors
             foreach (var i in selectedItems)
             {
                 if (i.SaveToDirectory(_conn, ppcDirectory)) {
-                    changes.Add(new ChangedItem() { FilePath = i.FilePath, OperatorId = i.lastOprid, State = ChangedItemState.CREATE });
+                    changes.Add(new ChangedItem() { FilePath = i.FilePath, OperatorId = i.lastOprid});
                 }
 
                 current++;
@@ -81,58 +79,20 @@ namespace Pivet.Data.Processors
             return changes;
         }
 
-        public List<ChangedItem> ProcessDeletes(string rootFolder)
+        public void ProcessDeletes(string rootFolder)
         {
-            List<ChangedItem> changes = new List<ChangedItem>();
-            using (var cmd = new OracleCommand("SELECT OBJECTID1, OBJECTVALUE1, OBJECTID2, OBJECTVALUE2, OBJECTID3, OBJECTVALUE3, OBJECTID4, OBJECTVALUE4, OBJECTID5, OBJECTVALUE5, OBJECTID6, OBJECTVALUE6, OBJECTID7, OBJECTVALUE7 from PSPCMPROGDEL WHERE VERSION > :1  and VERSION <= :2", _conn))
+            var ppcDirectory = Path.Combine(rootFolder, "PeopleCode");
+
+            if (Directory.Exists(ppcDirectory))
             {
-                OracleParameter lastVersionParam = new OracleParameter();
-                lastVersionParam.OracleDbType = OracleDbType.Int32;
-                lastVersionParam.Value = version.PCM.LastVersion;
-
-                OracleParameter currentVersionParam = new OracleParameter();
-                currentVersionParam.OracleDbType = OracleDbType.Int32;
-                currentVersionParam.Value = version.PCM.CurrentVersion;
-
-                cmd.Parameters.Add(lastVersionParam);
-                cmd.Parameters.Add(currentVersionParam);
-                using (var reader = cmd.ExecuteReader())
-                {
-                    while (reader.Read())
-                    {
-                        List<Tuple<int, string>> keys = new List<Tuple<int, string>>();
-
-                        keys.Add(new Tuple<int, string>(reader.GetInt32(0), reader.GetString(1)));
-                        keys.Add(new Tuple<int, string>(reader.GetInt32(2), reader.GetString(3)));
-                        keys.Add(new Tuple<int, string>(reader.GetInt32(4), reader.GetString(5)));
-                        keys.Add(new Tuple<int, string>(reader.GetInt32(6), reader.GetString(7)));
-                        keys.Add(new Tuple<int, string>(reader.GetInt32(8), reader.GetString(9)));
-                        keys.Add(new Tuple<int, string>(reader.GetInt32(10), reader.GetString(11)));
-                        keys.Add(new Tuple<int, string>(reader.GetInt32(12), reader.GetString(13)));
-
-                        var ppcItem = new PeopleCodeItem(keys, "", DateTime.MinValue);
-
-                        changes.Add(new ChangedItem() { FilePath = ppcItem.GetFullFilePath(rootFolder + Path.DirectorySeparatorChar + "Peoplecode"), State = ChangedItemState.DELETE });
-                    }
-                }
+                Directory.Delete(ppcDirectory, true);
             }
-            return changes;
         }
 
         private void LoadAllItemsFromDB()
         {
-            using (var cmd = new OracleCommand("SELECT OBJECTID1, OBJECTVALUE1, OBJECTID2, OBJECTVALUE2, OBJECTID3, OBJECTVALUE3, OBJECTID4, OBJECTVALUE4, OBJECTID5, OBJECTVALUE5, OBJECTID6, OBJECTVALUE6, OBJECTID7, OBJECTVALUE7, LASTUPDDTTM, LASTUPDOPRID from PSPCMPROG WHERE PROGSEQ = 0 and VERSION > :1  and VERSION <= :2", _conn))
+            using (var cmd = new OracleCommand("SELECT OBJECTID1, OBJECTVALUE1, OBJECTID2, OBJECTVALUE2, OBJECTID3, OBJECTVALUE3, OBJECTID4, OBJECTVALUE4, OBJECTID5, OBJECTVALUE5, OBJECTID6, OBJECTVALUE6, OBJECTID7, OBJECTVALUE7, LASTUPDDTTM, LASTUPDOPRID from PSPCMPROG WHERE PROGSEQ = 0", _conn))
             {
-                OracleParameter lastVersionParam = new OracleParameter();
-                lastVersionParam.OracleDbType = OracleDbType.Int32;
-                lastVersionParam.Value = version.PCM.LastVersion;
-
-                OracleParameter currentVersionParam = new OracleParameter();
-                currentVersionParam.OracleDbType = OracleDbType.Int32;
-                currentVersionParam.Value = version.PCM.CurrentVersion;
-
-                cmd.Parameters.Add(lastVersionParam);
-                cmd.Parameters.Add(currentVersionParam);
 
                 using (var reader = cmd.ExecuteReader())
                 {

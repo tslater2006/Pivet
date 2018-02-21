@@ -11,26 +11,22 @@ namespace Pivet.Data.Processors
     {
         public event ProgressHandler ProgressChanged;
         OracleConnection _conn;
-        VersionState _versionState;
 
         HashSet<string> SelectedItems = new HashSet<string>();
 
-        public int LoadItems(OracleConnection conn, FilterConfig filters, VersionState versionState)
+        public int LoadItems(OracleConnection conn, FilterConfig filters)
         {
-            _versionState = versionState;
             _conn = conn;
             /* TODO: Add Project filtering support */
 
             using (var itemLoad = new OracleCommand())
             {
-                itemLoad.Parameters.Add(new OracleParameter() { OracleDbType = OracleDbType.Int32, Value = _versionState.PRSM.LastVersion });
-                itemLoad.Parameters.Add(new OracleParameter() { OracleDbType = OracleDbType.Int32, Value = _versionState.PRSM.CurrentVersion });
                 //itemLoad.Parameters.Add(new OracleParameter() { OracleDbType = OracleDbType.Int32, Value = modifyThreshold });
                 itemLoad.Connection = conn;
                 StringBuilder sb = new StringBuilder();
 
                 /* Base query */
-                sb.Append("SELECT PORTAL_OBJNAME, PORTAL_PRNTOBJNAME FROM PSPRSMDEFN WHERE VERSION > :1 AND VERSION <= :2 ");
+                sb.Append("SELECT PORTAL_OBJNAME, PORTAL_PRNTOBJNAME FROM PSPRSMDEFN");
 
                 if (filters.Prefixes.Count > 0)
                 {
@@ -64,7 +60,7 @@ namespace Pivet.Data.Processors
             return SelectedItems.Count;
         }
 
-        public List<ChangedItem> ProcessDeletes(string rootFolder)
+        public void ProcessDeletes(string rootFolder)
         {
             throw new NotImplementedException();
         }

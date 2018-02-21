@@ -13,27 +13,20 @@ namespace Pivet.Data.Processors
         public event ProgressHandler ProgressChanged;
         OracleConnection _conn;
         List<SQLItem> _items = new List<SQLItem>();
-        VersionState _versionState;
 
-        public int LoadItems(OracleConnection conn, FilterConfig filters, VersionState versionState)
+        public int LoadItems(OracleConnection conn, FilterConfig filters)
         {
-            _versionState = versionState;
             _conn = conn;
             using (var itemLoad = new OracleCommand())
             {
                 itemLoad.Connection = conn;
-
-                itemLoad.Parameters.Add(new OracleParameter() { OracleDbType = OracleDbType.Int32, Value = _versionState.SRM.LastVersion });
-                itemLoad.Parameters.Add(new OracleParameter() { OracleDbType = OracleDbType.Int32, Value = _versionState.SRM.CurrentVersion });
-
                 StringBuilder sb = new StringBuilder();
                 if (filters.Projects != null && filters.Projects.Count > 0)
                 {
-                    //sb.Append("select A.FIELDNAME , A.FIELDVALUE, A.EFFDT, A.EFF_STATUS, A.XLATLONGNAME, A.XLATSHORTNAME, A.LASTUPDDTTM, A.LASTUPDOPRID from PSXLATITEM A, PSPROJECTITEM B WHERE B.OBJECTTYPE = 4 and B.OBJECTVALUE1 = A.FIELDNAME and B.OBJECTVALUE2 = A.FIELDVALUE and B.PROJECTNAME in (");
-                    sb.Append("select A.SQLID, A.SQLTYPE, A.LASTUPDOPRID, A.LASTUPDDTTM from PSSQLDEFN A, PSPROJECTITEM B WHERE B.OBJECTTYPE = 30 and B.OBJECTVALUE1 = A.SQLID and B.OBJECTVALUE2 = A.SQLTYPE AND A.VERSION > :1 AND A.VERSION <= :2 AND B.PROJECTNAME in (");
+                    sb.Append("select A.SQLID, A.SQLTYPE, A.LASTUPDOPRID, A.LASTUPDDTTM from PSSQLDEFN A, PSPROJECTITEM B WHERE B.OBJECTTYPE = 30 and B.OBJECTVALUE1 = A.SQLID and B.OBJECTVALUE2 = A.SQLTYPE AND B.PROJECTNAME in (");
                     for (var x = 0; x < filters.Projects.Count; x++)
                     {
-                        sb.Append(":" + (x + 3) + ",");
+                        sb.Append(":" + (x + 1) + ",");
                     }
                     sb.Length--;
                     sb.Append(")");
@@ -47,7 +40,7 @@ namespace Pivet.Data.Processors
                 else
                 {
                     //sb.Append("select A.FIELDNAME, A.FIELDVALUE, A.EFFDT, A.EFF_STATUS, A.XLATLONGNAME, A.XLATSHORTNAME, A.LASTUPDDTTM, A.LASTUPDOPRID from PSXLATITEM A");
-                    sb.Append("select A.SQLID, A.SQLTYPE, A.LASTUPDOPRID, A.LASTUPDDTTM FROM PSSQLDEFN A WHERE A.VERSION > :1 AND A.VERSION <= :2");
+                    sb.Append("select A.SQLID, A.SQLTYPE, A.LASTUPDOPRID, A.LASTUPDDTTM FROM PSSQLDEFN A");
                 }
                 itemLoad.CommandText = sb.ToString();
 
@@ -149,25 +142,13 @@ namespace Pivet.Data.Processors
             return path;
         }
 
-        public List<ChangedItem> ProcessDeletes(string rootFolder)
+        public void ProcessDeletes(string rootFolder)
         {
-            List<ChangedItem> deletes = new List<ChangedItem>();
-
-            using (var cmd = new OracleCommand("SELECT SQLID, SQLTYPE FROM PSSQLDEL WHERE VERSION > :1 and VERSION <= :2", _conn))
+            var sqlRoot = Path.Combine(rootFolder, "SQL Objects");
+            if (Directory.Exists(sqlRoot))
             {
-                cmd.Parameters.Add(new OracleParameter() { OracleDbType = OracleDbType.Int32, Value = _versionState.SRM.LastVersion });
-                cmd.Parameters.Add(new OracleParameter() { OracleDbType = OracleDbType.Int32, Value = _versionState.SRM.CurrentVersion });
-
-                using (var reader = cmd.ExecuteReader())
-                {
-                    while (reader.Read())
-                    {
-                        deletes.Add(new ChangedItem() { FilePath = GetFilePathForSQL(rootFolder, reader.GetString(0),reader.GetString(1)), State = ChangedItemState.DELETE });
-                    }
-                }
+                Directory.Delete(sqlRoot, true);
             }
-
-            return deletes;
         }
 
         private void ReportProgress(double progress)
@@ -197,7 +178,7 @@ namespace Pivet.Data.Processors
 
                  File.WriteAllText(fileName, item.GetContents(_conn));
 
-                changedItems.Add(new ChangedItem() { FilePath = fileName, OperatorId = item.Oprid, State = ChangedItemState.CREATE });
+                changedItems.Add(new ChangedItem() { FilePath = fileName, OperatorId = item.Oprid});
 
                 current++;
                 ReportProgress(((int)(((current / total) * 10000)) / (double)100));

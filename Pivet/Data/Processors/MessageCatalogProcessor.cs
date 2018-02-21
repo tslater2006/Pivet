@@ -16,7 +16,7 @@ namespace Pivet.Data.Processors
 
         public event ProgressHandler ProgressChanged;
 
-        public int LoadItems(OracleConnection conn, FilterConfig filters, VersionState versionState)
+        public int LoadItems(OracleConnection conn, FilterConfig filters)
         {
             _conn = conn;
 
@@ -57,7 +57,7 @@ namespace Pivet.Data.Processors
             return selectedItems.Count;
         }
 
-        public List<ChangedItem> ProcessDeletes(string rootFolder)
+        public void ProcessDeletes(string rootFolder)
         {
             var msgCatPath = Path.Combine(rootFolder, "Message Catalogs");
 
@@ -65,8 +65,6 @@ namespace Pivet.Data.Processors
             {
                 Directory.Delete(msgCatPath, true);
             }
-
-            return new List<ChangedItem>();
         }
 
         private void ReportProgress(double progress)
@@ -111,7 +109,7 @@ namespace Pivet.Data.Processors
                 var filePath = Path.Combine(msgCatPath, set.Key + ".json");
                 File.WriteAllText(filePath, jsonText);
 
-                changedItems.Add(new ChangedItem() { FilePath = filePath, OperatorId = "MessageCats", State = ChangedItemState.CREATE });
+                changedItems.Add(new ChangedItem() { FilePath = filePath, OperatorId = "MessageCats"});
             }
             return changedItems;
         }

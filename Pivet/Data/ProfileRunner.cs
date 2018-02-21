@@ -18,7 +18,6 @@ namespace Pivet.Data
         {
             OracleConnection _conn;
             List<IDataProcessor> Processors = new List<IDataProcessor>();
-            VersionState versionState;
 
             Stopwatch sw = new Stopwatch();
             sw.Start();
@@ -55,18 +54,6 @@ namespace Pivet.Data
             _conn = connectionResult.Item1;
             Logger.Write("Connected to Database.");
 
-            /* Update our Version.txt file to track various version numbers */
-            if (File.Exists(Path.Combine(profile.OutputFolder, "version.txt")))
-            {
-                versionState = JsonConvert.DeserializeObject<VersionState>(File.ReadAllText(Path.Combine(profile.OutputFolder, "version.txt")));
-            }
-            else
-            {
-                versionState = new VersionState();
-            }
-
-            versionState.UpdateAndSaveFromDB(_conn, profile.OutputFolder);
-
             /* run each processor */
             foreach (var provider in profile.DataProviders)
             {
@@ -80,30 +67,20 @@ namespace Pivet.Data
                     processor.ProgressChanged += Processor_ProgressChanged;
                     Processors.Add(processor);
                     //int itemCount = processor.LoadItems(_conn, config.Filters, config.ModifyThreshold,versionState);
-                    int itemCount = processor.LoadItems(_conn, profile.Filters, versionState);
+                    int itemCount = processor.LoadItems(_conn, profile.Filters);
                     Logger.Write("Found " + itemCount + " " + provider + " Definitions");
                 }
             }
 
             Logger.Write("Definitions collected.");
 
-            Logger.Write("Processing deleted items.");
-            List<ChangedItem> deletedItems = new List<ChangedItem>();
+            Logger.Write("Cleaning working directory.");
             foreach(var p in Processors)
             {
-                deletedItems.AddRange(p.ProcessDeletes(profile.OutputFolder));
+                p.ProcessDeletes(profile.OutputFolder);
             }
             
-            foreach(var item in deletedItems)
-            {
-                /* delete the file if on disk */
-                if (File.Exists(item.FilePath))
-                {
-                    File.Delete(item.FilePath);
-                }
-            }
-
-            Logger.Write("Processing new/changed items.");
+            Logger.Write("Processing items.");
             List<ChangedItem> changedItems = new List<ChangedItem>();
             foreach (var p in Processors)
             {

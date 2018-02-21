@@ -61,7 +61,6 @@ namespace Pivet
             }
 
             Logger.Write($"Config loaded. {GlobalConfig.Environments.Count} Environment(s) found, {GlobalConfig.Profiles.Count} Profile(s) found.");
-            Logger.Write("Terminating for now... profile running is coming soon :)");
             
             foreach (var profile in GlobalConfig.Profiles)
             {

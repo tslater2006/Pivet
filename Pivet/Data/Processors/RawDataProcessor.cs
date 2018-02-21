@@ -40,60 +40,37 @@ namespace Pivet.Data
             }
         }
 
+        public void ProcessDeletes(string rootFolder)
+        {
+            string outputFolder = rootFolder + Path.DirectorySeparatorChar + _item.Folder;
+
+            if (Directory.Exists(outputFolder))
+            {
+                Directory.Delete(outputFolder, true);
+            }
+        }
 
         public List<ChangedItem> Process()
         {
             string outputFolder = _outputPath + Path.DirectorySeparatorChar + _item.Folder;
 
-            List<string> existingItems = new List<string>();
-            if (Directory.Exists(outputFolder))
-            {
-                existingItems.AddRange(Directory.GetFiles(outputFolder,"*",SearchOption.AllDirectories));
-                DeleteExistingItems();
-            }
-
             Logger.Write($"Processing Table: {_item.Record}");
 
             List<RawDataItem> items = GetItems();
             
-
             Directory.CreateDirectory(outputFolder);
             List<ChangedItem> changedItems = new List<ChangedItem>();
 
             foreach (RawDataItem item in items)
             {
                 var changedItem = SaveRawDataItem(outputFolder, item);
-
-                if (existingItems.Contains(changedItem.FilePath))
-                {
-                    existingItems.Remove(changedItem.FilePath);
-                }
-
+                
                 changedItems.Add(changedItem);
-            }
-
-            foreach (string s in existingItems)
-            {
-                /* item is still here, meaning it wasn't dumped out this run, therefore it was deleted */
-                ChangedItem ci = new ChangedItem();
-                ci.FilePath = s;
-                ci.OperatorId = "RAWDATA";
-                ci.State = ChangedItemState.DELETE;
-                changedItems.Add(ci);
             }
             
             return changedItems;
         }
 
-        private void DeleteExistingItems()
-        {
-            string outputFolder = _outputPath + Path.DirectorySeparatorChar + _item.Folder;
-            try
-            {
-                Directory.Delete(outputFolder, true);
-            }
-            catch (Exception e) { }
-        }
 
         private ChangedItem SaveRawDataItem(string path, RawDataItem item)
         {
@@ -125,7 +102,6 @@ namespace Pivet.Data
             {
                 CI.OperatorId = "RAWDATA";
             }
-            CI.State = ChangedItemState.CREATE;
             
 
             Directory.CreateDirectory(Path.GetDirectoryName(filePath));
