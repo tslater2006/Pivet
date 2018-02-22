@@ -13,6 +13,7 @@ namespace Pivet
         {
             var configFile = "config.json";
             var profileToRun = "";
+            var wantsBuilder = false;
 
             if (args.Length > 1)
             {
@@ -25,6 +26,10 @@ namespace Pivet
                     if (args[x].ToLower().Equals("-p"))
                     {
                         profileToRun = args[x + 1];
+                    }
+                    if (args[x].ToLower().Equals("-b"))
+                    {
+                        wantsBuilder = true;
                     }
                 }
             }
@@ -41,10 +46,13 @@ namespace Pivet
             }
             else
             {
-                Console.Write("Found an existing config file, would you like to modify it? (y/n)");
-                if (Console.ReadLine() == "y")
+                if (wantsBuilder)
                 {
-                    configFile = ConfigBuilder.RunBuilder(configFile);
+                    Console.Write("Found an existing config file, would you like to modify it? (y/n)");
+                    if (Console.ReadLine() == "y")
+                    {
+                        configFile = ConfigBuilder.RunBuilder(configFile);
+                    }
                 }
             }
 

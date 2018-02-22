@@ -55,7 +55,7 @@ namespace Pivet.Data
             {
                 try
                 {
-                    if (config != null)
+                    if (config.Url.Length > 0)
                     {
                         _credentials = new UsernamePasswordCredentialsProvider(config.User, config.Password);
                         Logger.Write("No repository found on disk, trying to clone hosted version.");
@@ -77,6 +77,7 @@ namespace Pivet.Data
                 {
                     /* probably an empty repo */
                     Logger.Write("Problem cloneing hosted version (may not exist). Creating new repository.");
+                    _repository = Git.Init().SetDirectory(path).Call();
                 }
             }
             

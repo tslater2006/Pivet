@@ -128,6 +128,7 @@ namespace Pivet
                     AddProfile();
                 }
             } while (addProfile == "y");
+
         }
 
         private static void ModifyEnvironment(EnvironmentConfig toModify)
@@ -198,6 +199,29 @@ namespace Pivet
             ModifyFilters(profile.Filters, profile.DataProviders.Contains(DataProvider.MessageCatalog));
 
             /* ModifyRepository(profile.Repository); */
+
+            var configRemoteRepo = "n";
+            PromptWithDefault("Would you like to configure a remote repository? (y/n)", ref configRemoteRepo);
+            if (configRemoteRepo == "y")
+            {
+                var repoConfig = profile.Repository;
+
+                var repoUrl = repoConfig.Url;
+                PromptWithDefault("Please enter the URL for the remote repository", ref repoUrl);
+                repoConfig.Url = repoUrl;
+
+                var username = repoConfig.User;
+                PromptWithDefault("Please enter the username for pushing changes", ref username);
+                repoConfig.User = username;
+
+                var password = "***";
+                PromptWithDefault("Please enter the password for pushing changes", ref password);
+                if (password != "***")
+                {
+                    repoConfig.Password = password;
+                }
+
+            }
 
             SaveConfig();
         }

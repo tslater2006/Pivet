@@ -26,7 +26,7 @@ namespace Pivet.Data.Processors
                 var min = msgFilter.Min;
                 var max = msgFilter.Max;
 
-                using (var cmd = new OracleCommand("SELECT MESSAGE_NBR, MESSAGE_TEXT,MSG_SEVERITY,LAST_UPDATE_DTTM,DESCRLONG FROM PSMSGCATDEFN WHERE MESSAGE_SET_NBR=:1 and MESSAGE_NBR >= :2 and MESSAGE_NBR <= :3", conn))
+                using (var cmd = new OracleCommand("SELECT MESSAGE_NBR, MESSAGE_TEXT,MSG_SEVERITY,LAST_UPDATE_DTTM,DESCRLONG FROM PSMSGCATDEFN WHERE MESSAGE_SET_NBR=:1 and MESSAGE_NBR >= :2 and MESSAGE_NBR <= :3 order by MESSAGE_NBR ASC", conn))
                 {
                     cmd.Parameters.Add(new OracleParameter() { OracleDbType = OracleDbType.Int32, Value = set });
                     cmd.Parameters.Add(new OracleParameter() { OracleDbType = OracleDbType.Int32, Value = min });
@@ -136,7 +136,7 @@ namespace Pivet.Data.Processors
             }
 
             /* Get any translations */
-            using (var translateCmd = new OracleCommand("SELECT LANGUAGE_CD, MESSAGE_TEXT, DESCRLONG FROM PSMSGCATLANG WHERE MESSAGE_SET_NBR = :1 AND MESSAGE_NBR = :2", _conn))
+            using (var translateCmd = new OracleCommand("SELECT LANGUAGE_CD, MESSAGE_TEXT, DESCRLONG FROM PSMSGCATLANG WHERE MESSAGE_SET_NBR = :1 AND MESSAGE_NBR = :2 ORDER BY LANGUAGE_CD ASC", _conn))
             {
                 translateCmd.Parameters.Add(new OracleParameter() { OracleDbType = OracleDbType.Int32, Value = item.MessageSet });
                 translateCmd.Parameters.Add(new OracleParameter() { OracleDbType = OracleDbType.Int32, Value = item.MessageNumber });
