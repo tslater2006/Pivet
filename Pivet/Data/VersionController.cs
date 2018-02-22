@@ -15,10 +15,12 @@ namespace Pivet.Data
     {
         private Git _repository;
         UsernamePasswordCredentialsProvider _credentials;
+        RepositoryConfig config;
         private string _repoBase;
         double lastProgress;
         internal void InitRepository(string path, RepositoryConfig config)
         {
+            this.config = config;
             Logger.Write("Initializing Repository.");
             _repoBase = path;
             if (Directory.Exists(path) == false)
@@ -99,12 +101,30 @@ namespace Pivet.Data
         {
             Logger.Write("Processing repository changes...");
             Logger.Write("");
-            double total = adds.Count + 20;
             double current = 0;
             ReportProgress(0);
             var status = _repository.Status().Call();
-            
-            var opridGroups = adds.GroupBy(p => p.OperatorId);
+
+            List<ChangedItem> newOrModifiedFiles = new List<ChangedItem>();
+
+            var newFiles = status.GetUntracked();
+            foreach (var s in newFiles)
+            {
+                newOrModifiedFiles.Add(adds.Where(p => p.FilePath.Replace(_repoBase + Path.DirectorySeparatorChar, "").Replace("\\","/") == s).First());
+            }
+
+            var moddedFiles = status.GetModified();
+            foreach(var s in moddedFiles)
+            {
+                newOrModifiedFiles.Add(adds.Where(p => p.FilePath.Replace(_repoBase + Path.DirectorySeparatorChar, "").Replace("\\", "/") == s).First());
+            }
+
+            var deletedFiles = status.GetMissing();
+
+            var opridGroups = newOrModifiedFiles.GroupBy(p => p.OperatorId);
+
+            double total = newFiles.Count + moddedFiles.Count + deletedFiles.Count + 1 + (opridGroups.Count());
+
             foreach (var opr in opridGroups)
             {
                 var oprid = opr.Key;
@@ -117,18 +137,20 @@ namespace Pivet.Data
                     current++;
                     ReportProgress(((int)(((current / total) * 10000)) / (double)100));
                 }
+
                 status = _repository.Status().Call();
-                if (status.GetAdded().Count > 0)
+                if (status.GetAdded().Count + status.GetChanged().Count > 0)
                 {
                     _repository.Commit().SetAuthor(oprid, oprid).SetMessage("Changes made by " + oprid).Call();
                 }
-                
+                current++;
+                ReportProgress(((int)(((current / total) * 10000)) / (double)100));
             }
+
             status = _repository.Status().Call();
             if (status.GetMissing().Count > 0)
             {
                 var hasItems = false;
-                /* process any file deletes as SYSTEM */
                 foreach (var d in status.GetMissing())
                 {
                     hasItems = true;
@@ -139,39 +161,16 @@ namespace Pivet.Data
                     _repository.Commit().SetAuthor("SYSTEM", "SYSTEM").SetMessage("Deleted Objects").Call();
                 }
             }
-            current += 10;
-
+            current++;
             ReportProgress(((int)(((current / total) * 10000)) / (double)100));
 
-            status = _repository.Status().Call();
-            if (status.GetUntracked().Count > 0 || status.GetModified().Count > 0)
-            {
-                foreach (var d in status.GetUntracked())
-                {
-                    _repository.Add().AddFilepattern(d).Call();
-                }
-                var hasItems = false;
-                foreach (var d in status.GetModified())
-                {
-                    hasItems = true;
-                    _repository.Add().AddFilepattern(d).Call();
-                }
-                if (hasItems)
-                {
-                    _repository.Commit()
-                        .SetAuthor("SYSTEM", "SYSTEM")
-                        .SetMessage("Commiting files with unknown authors.")
-                        .Call();
-                }
-            }
-            current += 10;
-
-            ReportProgress(((int)(((current / total) * 10000)) / (double)100));
             status = _repository.Status().Call();
             Thread.Sleep(2000);
-            if (_credentials != null)
+            if (config.Url.Length > 0)
             {
+                Logger.Write("Pushing repository changes...");
                 _repository.Push().SetCredentialsProvider(_credentials).Call();
+                Logger.Write("Repository pushed!");
             }
          }
     }
