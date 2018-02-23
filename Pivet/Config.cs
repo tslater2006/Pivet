@@ -47,8 +47,6 @@ namespace Pivet
         [JsonProperty(Required = Required.Always)]
         public List<string> DataProviders = new List<string>();
 
-        public List<RawDataEntry> RawData = new List<RawDataEntry>();
-
         [JsonProperty(Required = Required.Always)]
         public FilterConfig Filters = new FilterConfig();
 
@@ -67,6 +65,11 @@ namespace Pivet
         public string NamePattern = "";
         public string Folder = "";
         public bool IncludeRelated = false;
+
+        public override string ToString()
+        {
+            return Record;
+        }
     }
 
     public class ConnectionConfig
@@ -102,6 +105,9 @@ namespace Pivet
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public List<MessageCatalogFilter> MessageCatalogs;
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public List<RawDataEntry> RawData = new List<RawDataEntry>();
     }
 
     public class RepositoryConfig
