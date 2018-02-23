@@ -349,12 +349,17 @@ namespace Pivet
             {
                 Console.WriteLine($"   {x++}.) {item.ToString()}");
             }
-
-            var choice = "";
+            Console.WriteLine($"   {items.Count + 1}.) All");
+            var choice = $"{items.Count + 1}";
             PromptWithDefault("Select one or more Data Providers (comma separated)", ref choice);
 
-            var choiceIndexes = choice.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries).Select(s => int.Parse(s.Trim()));
+            var choiceIndexes = choice.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries).Select(s => int.Parse(s.Trim())).ToList();
             var valueList = new List<T>();
+            if ($"{items.Count+1}" == choice)
+            {
+                return items;
+            }
+
             foreach (var index in choiceIndexes)
             {
                 valueList.Add((T)items[index - 1]);
