@@ -13,7 +13,8 @@ namespace Pivet.Data.Processors
     {
         private List<TranslateValueItem> _items = new List<TranslateValueItem>();
         OracleConnection _conn;
-
+        public string ItemName => "Translate Value";
+        public string ProcessorID => "TranslateValueProcessor";
         public event ProgressHandler ProgressChanged;
 
         public int LoadItems(OracleConnection conn, FilterConfig filters)

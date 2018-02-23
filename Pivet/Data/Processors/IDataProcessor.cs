@@ -24,5 +24,8 @@ namespace Pivet.Data
 
         event ProgressHandler ProgressChanged;
         
+        string ItemName { get; }
+
+        string ProcessorID { get; }
     }
 }

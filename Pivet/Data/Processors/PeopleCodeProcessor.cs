@@ -15,7 +15,8 @@ namespace Pivet.Data.Processors
     {
         private OracleConnection _conn;
         private List<PeopleCodeItem> selectedItems = new List<PeopleCodeItem>();
-
+        public string ItemName => "PeopleCode";
+        public string ProcessorID => "PeopleCodeProcessor";
         public event ProgressHandler ProgressChanged;
 
         //public int LoadItems(OracleConnection conn, FilterConfig filters, int modifyThreshold, VersionState versionState)

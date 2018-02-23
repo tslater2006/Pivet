@@ -1,5 +1,7 @@
 ﻿using Newtonsoft.Json;
 using Pivet;
+using Pivet.Data;
+using Pivet.Data.Processors;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -185,18 +187,22 @@ namespace Pivet
             configFile.Profiles.Add(profile);
             SaveConfig();
         }
-
+        static List<string> FindProviders() {
+            var type = typeof(IDataProcessor);
+            return AppDomain.CurrentDomain.GetAssemblies().SelectMany(s => s.GetTypes()).Where(p => type.IsAssignableFrom(p) && !p.IsInterface && !p.IsAbstract).Select(t => (Activator.CreateInstance(t) as IDataProcessor).ProcessorID).ToList();
+        }
         static void ModifyProfile(ProfileConfig profile)
         {
             PromptWithDefault("Please give this profile a name", ref profile.Name);
             PromptWithDefault("Enter the output path", ref profile.OutputFolder);
             profile.EnvironmentName = PromptWithList("Select the environment this profile should use", configFile.Environments).Name;
 
-            profile.DataProviders = SelectMultipleWithEnum<DataProvider>("Select which data providers you would like");
+            var availableProviders = FindProviders();
+            profile.DataProviders = SelectMultipleFromList<string>("Select which data providers you would like", availableProviders);
 
             /* TODO: Builder support for RawData entries */
 
-            ModifyFilters(profile.Filters, profile.DataProviders.Contains(DataProvider.MessageCatalog));
+            ModifyFilters(profile.Filters, profile.DataProviders.Contains(new MessageCatalogProcessor().ProcessorID));
 
             /* ModifyRepository(profile.Repository); */
 
@@ -332,6 +338,29 @@ namespace Pivet
             var choices = choice.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim());
 
             return choices.ToList();
+        }
+
+        static List<T> SelectMultipleFromList<T>(string msg, List<T> items)
+        {
+
+            Console.WriteLine($"{msg}: ");
+            var x = 1;
+            foreach (T item in items)
+            {
+                Console.WriteLine($"   {x++}.) {item.ToString()}");
+            }
+
+            var choice = "";
+            PromptWithDefault("Select one or more Data Providers (comma separated)", ref choice);
+
+            var choiceIndexes = choice.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries).Select(s => int.Parse(s.Trim()));
+            var valueList = new List<T>();
+            foreach (var index in choiceIndexes)
+            {
+                valueList.Add((T)items[index - 1]);
+            }
+
+            return valueList;
         }
 
         static List<T> SelectMultipleWithEnum<T>(string msg)

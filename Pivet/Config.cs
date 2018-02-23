@@ -47,8 +47,8 @@ namespace Pivet
         [JsonProperty(Required = Required.Always)]
         public string EnvironmentName = "";
 
-        [JsonProperty(Required = Required.Always, ItemConverterType = typeof(StringEnumConverter))]
-        public List<DataProvider> DataProviders = new List<DataProvider>();
+        [JsonProperty(Required = Required.Always)]
+        public List<string> DataProviders = new List<string>();
 
         public List<RawDataEntry> RawData = new List<RawDataEntry>();
 
@@ -148,11 +148,6 @@ namespace Pivet
     public enum ConnectionProvider
     {
         Bootstrap
-    }
-
-    public enum DataProvider
-    {
-        HTML, MessageCatalog, PeopleCode, Registry, SQL, Stylesheet, TranslateValue
     }
 
     public class PasswordCrypto

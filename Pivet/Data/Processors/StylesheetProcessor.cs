@@ -12,7 +12,8 @@ namespace Pivet.Data.Processors
     {
         private OracleConnection _conn;
         private List<StylesheetItem> _items = new List<StylesheetItem>();
-
+        public string ItemName => "Stylesheet";
+        public string ProcessorID => "StylesheetProcessor";
         public event ProgressHandler ProgressChanged;
 
         //public int LoadItems(OracleConnection conn, FilterConfig filters, int modifyThreshold, VersionState versionState)

@@ -55,10 +55,10 @@ namespace Pivet.Data
             Logger.Write("Connected to Database.");
 
             /* run each processor */
+            var availableProcessors = FindProviders();
             foreach (var provider in profile.DataProviders)
             {
-                Type dataProvType = Type.GetType("Pivet.Data.Processors." + provider + "Processor");
-                IDataProcessor processor = Activator.CreateInstance(dataProvType) as IDataProcessor;
+                IDataProcessor processor = availableProcessors.Where(p => p.ProcessorID == provider).FirstOrDefault();
                 if (processor == null)
                 {
                     Logger.Write("Could not find the data processor: " + provider);
@@ -84,7 +84,7 @@ namespace Pivet.Data
             List<ChangedItem> changedItems = new List<ChangedItem>();
             foreach (var p in Processors)
             {
-                Console.WriteLine($"Saving {p.GetType().Name.Replace("Processor","")} Definitions..." );
+                Console.WriteLine($"Saving {p.ItemName} Definitions..." );
                 Console.WriteLine();
                 changedItems.AddRange(p.SaveToDisk(profile.OutputFolder));
                 Console.CursorLeft = 0;
@@ -122,6 +122,12 @@ namespace Pivet.Data
                 lastProgress = evt.Progress;
             }
 
+        }
+
+        static List<IDataProcessor> FindProviders()
+        {
+            var type = typeof(IDataProcessor);
+            return AppDomain.CurrentDomain.GetAssemblies().SelectMany(s => s.GetTypes()).Where(p => type.IsAssignableFrom(p) && !p.IsInterface && !p.IsAbstract).Select(s => Activator.CreateInstance(s) as IDataProcessor).ToList();
         }
     }
 }

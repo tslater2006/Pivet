@@ -10,6 +10,8 @@ namespace Pivet.Data.Processors
 {
     internal class SQLProcessor : IDataProcessor
     {
+        public string ItemName => "SQL";
+        public string ProcessorID => "SQLProcessor";
         public event ProgressHandler ProgressChanged;
         OracleConnection _conn;
         List<SQLItem> _items = new List<SQLItem>();

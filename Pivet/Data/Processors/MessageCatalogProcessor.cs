@@ -14,6 +14,9 @@ namespace Pivet.Data.Processors
         List<MessageCatalogItem> selectedItems = new List<MessageCatalogItem>();
         OracleConnection _conn;
 
+        public string ItemName => "Message Catalog";
+        public string ProcessorID => "MessageCatalogProcessor";
+
         public event ProgressHandler ProgressChanged;
 
         public int LoadItems(OracleConnection conn, FilterConfig filters)

@@ -9,6 +9,8 @@ namespace Pivet.Data.Processors
 {
     internal class RegistryProcessor : IDataProcessor
     {
+        public string ItemName => "Registry";
+        public string ProcessorID => "RegistryProcessor";
         public event ProgressHandler ProgressChanged;
         OracleConnection _conn;
 

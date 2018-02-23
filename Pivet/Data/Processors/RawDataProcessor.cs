@@ -17,7 +17,8 @@ namespace Pivet.Data
     class RawDataProcessor
     {
         public event ProgressHandler ProgressChanged;
-
+        public string ItemName => "Raw Data";
+        public string ProcessorID => "RawDataProcessor";
         RawDataEntry _item;
         string _outputPath;
         OracleConnection _conn;

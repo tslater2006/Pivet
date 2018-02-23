@@ -13,6 +13,10 @@ namespace Pivet.Data.Processors
         private OracleConnection _conn;
         private List<HTMLItem> _items = new List<HTMLItem>();
 
+        public string ItemName => "HTML";
+
+        public string ProcessorID => "HTMLProcessor";
+
         public event ProgressHandler ProgressChanged;
 
         //public int LoadItems(OracleConnection conn, FilterConfig filters, int modifyThreshold, VersionState versionState)
