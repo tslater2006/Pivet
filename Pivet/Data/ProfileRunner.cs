@@ -93,18 +93,6 @@ namespace Pivet.Data
 
             Logger.Write("Definitions saved to disk.");
 
-            Logger.Write("Processing RawData Entries (" + profile.RawData.Count + ")");
-
-            /* TODO: Process RawData Entries */
-
-            foreach (RawDataEntry item in profile.RawData)
-            {
-                RawDataProcessor proc = new RawDataProcessor(_conn, profile.OutputFolder, item, profile.Filters.Prefixes);
-                proc.ProgressChanged += Processor_ProgressChanged;
-                changedItems.AddRange(proc.Process());
-
-            }
-
             versionController.ProcessChanges(changedItems);
             sw.Stop();
             Logger.Write("Environment processed in: " + sw.Elapsed.TotalSeconds + " seconds");

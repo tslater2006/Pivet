@@ -14,24 +14,26 @@ namespace Pivet.Data
 {
     /* This is NOT in the Pivet.Data.Processors namespace because it does not implement IDataProcessor and cannot be used in the DataProviders section of the Config */
 
-    class RawDataProcessor
+    class RawDataProcessor : IDataProcessor
     {
         public event ProgressHandler ProgressChanged;
         public string ItemName => "Raw Data";
         public string ProcessorID => "RawDataProcessor";
-        RawDataEntry _item;
         string _outputPath;
         OracleConnection _conn;
         List<string> _prefixes;
-        public RawDataProcessor(OracleConnection conn, string baseOutputPath, RawDataEntry item, List<string> prefixes)
+        List<RawDataEntry> _entries;
+        Dictionary<RawDataEntry,List<RawDataItem>> _selectedItems;
+        public int LoadItems(OracleConnection conn, FilterConfig filters)
         {
-            _item = item;
-            _outputPath = baseOutputPath;
             _conn = conn;
-            _prefixes = prefixes;
+            _prefixes = filters.Prefixes;
+            _entries = filters.RawData;
+
+            _selectedItems = GetItems();
+
+            return _selectedItems.Sum(k => k.Value.Count);
         }
-
-
 
         private void ReportProgress(double progress)
         {
@@ -43,42 +45,47 @@ namespace Pivet.Data
 
         public void ProcessDeletes(string rootFolder)
         {
-            string outputFolder = rootFolder + Path.DirectorySeparatorChar + _item.Folder;
-
-            if (Directory.Exists(outputFolder))
+            foreach (var _item in _entries)
             {
-                Directory.Delete(outputFolder, true);
+                string outputFolder = rootFolder + Path.DirectorySeparatorChar + _item.Folder;
+
+                if (Directory.Exists(outputFolder))
+                {
+                    Directory.Delete(outputFolder, true);
+                }
             }
         }
 
-        public List<ChangedItem> Process()
+        public List<ChangedItem> SaveToDisk(string _outputPath)
         {
-            string outputFolder = _outputPath + Path.DirectorySeparatorChar + _item.Folder;
-
-            Logger.Write($"Processing Table: {_item.Record}");
-
-            List<RawDataItem> items = GetItems();
-            
-            Directory.CreateDirectory(outputFolder);
             List<ChangedItem> changedItems = new List<ChangedItem>();
-
-            foreach (RawDataItem item in items)
+            foreach (var _item in _selectedItems)
             {
-                var changedItem = SaveRawDataItem(outputFolder, item);
+                string outputFolder = _outputPath + Path.DirectorySeparatorChar + _item.Key.Folder;
+
+                Logger.Write($"Saving Table: {_item.Key.Record}");
+
+                Directory.CreateDirectory(outputFolder);
                 
-                changedItems.Add(changedItem);
+
+                foreach (RawDataItem item in _item.Value)
+                {
+                    var changedItem = SaveRawDataItem(outputFolder, _item.Key.NamePattern, item);
+
+                    changedItems.Add(changedItem);
+                }
             }
-            
+
             return changedItems;
         }
 
 
-        private ChangedItem SaveRawDataItem(string path, RawDataItem item)
+        private ChangedItem SaveRawDataItem(string path, string pattern, RawDataItem item)
         {
             ChangedItem CI = new ChangedItem();
             /* build out file name */
             Regex placeHolder = new Regex("{([^}]+)}");
-            var filePath = path + Path.DirectorySeparatorChar + _item.NamePattern;
+            var filePath = path + Path.DirectorySeparatorChar + pattern;
 
             var matches = placeHolder.Matches(filePath);
             string invalid = new string(Path.GetInvalidFileNameChars());
@@ -111,83 +118,88 @@ namespace Pivet.Data
             return CI;
         }
 
-        private List<RawDataItem> GetItems()
+        private Dictionary<RawDataEntry, List<RawDataItem>> GetItems()
         {
-            List<RawDataItem> returnedItems = new List<RawDataItem>();
+            Dictionary<RawDataEntry, List<RawDataItem>> returnedItems = new Dictionary<RawDataEntry, List<RawDataItem>>();
 
-            Logger.Write("Finding Key Fields for record.");
-
-            List<string> recordKeyFields = new List<string>();
-            List<string> relatedTables = new List<string>();
-
-            using (OracleCommand keyCommand = new OracleCommand("SELECT FIELDNAME FROM PSRECFIELD WHERE RECNAME = :1 AND MOD(USEEDIT,2) = 1", _conn))
+            foreach(var _item in _entries)
             {
-                keyCommand.Parameters.Add(new OracleParameter() { OracleDbType = OracleDbType.Varchar2, Value = _item.Record });
+                List<RawDataItem> entryItems = new List<RawDataItem>();
+                Logger.Write($"Finding Key Fields for record: {_item.Record}");
 
-                using (var reader = keyCommand.ExecuteReader())
+                List<string> recordKeyFields = new List<string>();
+                List<string> relatedTables = new List<string>();
+
+                using (OracleCommand keyCommand = new OracleCommand("SELECT FIELDNAME FROM PSRECFIELD WHERE RECNAME = :1 AND MOD(USEEDIT,2) = 1", _conn))
                 {
-                    while (reader.Read())
+                    keyCommand.Parameters.Add(new OracleParameter() { OracleDbType = OracleDbType.Varchar2, Value = _item.Record });
+
+                    using (var reader = keyCommand.ExecuteReader())
                     {
-                        var keyFieldName = reader.GetString(0);
-                        recordKeyFields.Add(keyFieldName);
-                    }
-                }
-
-            }
-
-            Logger.Write($"Record has {recordKeyFields.Count} keys: {string.Join(", ", recordKeyFields)}");
-
-            Logger.Write("Finding related tables.");
-
-            var keyFieldsForInClause = "'" + string.Join("', '", recordKeyFields) + "'";
-
-            using (OracleCommand relatedTableCommand = new OracleCommand($"SELECT CASE WHEN SQLTABLENAME = ' ' THEN 'PS_' || RECNAME ELSE SQLTABLENAME END FROM PSRECDEFN WHERE RECNAME IN  (SELECT DISTINCT RECNAME FROM PSRECFIELD WHERE FIELDNAME IN({keyFieldsForInClause}) AND MOD(USEEDIT, 2) = 1 GROUP BY RECNAME HAVING COUNT(FIELDNAME) = {recordKeyFields.Count}) AND RECTYPE = 0 AND RECNAME <> '{_item.Record}'", _conn))
-            {
-                using (var reader = relatedTableCommand.ExecuteReader())
-                {
-                    while (reader.Read())
-                    {
-                        var relatedTable = reader.GetString(0);
-                        relatedTables.Add(relatedTable);
-                    }
-                }
-            }
-
-            Logger.Write($"Found {relatedTables.Count} Related Tables: {string.Join(", ", relatedTables)}");
-
-            Logger.Write("Processing top level rows.");
-
-            var likeString = $"{_item.FilterField} LIKE '" + string.Join($"%' OR {_item.FilterField} LIKE '", _prefixes) + "%'";
-
-            /* get the actual table name */
-            var topTableName = "";
-            using (OracleCommand actualTableName = new OracleCommand($"SELECT CASE WHEN SQLTABLENAME = ' ' THEN 'PS_' || RECNAME ELSE SQLTABLENAME END FROM PSRECDEFN WHERE RECNAME ='{_item.Record}'", _conn))
-            {
-                using (var reader = actualTableName.ExecuteReader())
-                {
-                    reader.Read();
-                    topTableName = reader.GetString(0);
-                }
-            }
-
-            using (OracleCommand topLevelRows = new OracleCommand($"SELECT * FROM {topTableName} WHERE {likeString} ", _conn))
-            {
-                using (var reader = topLevelRows.ExecuteReader())
-                {
-                    var dataTable = reader.GetSchemaTable();
-                    while (reader.Read())
-                    {
-                        var rawItem = DataItemFromReader(dataTable, reader);
-
-                        if (_item.IncludeRelated)
+                        while (reader.Read())
                         {
-                            LoadRelatedTables(recordKeyFields, relatedTables, rawItem);
+                            var keyFieldName = reader.GetString(0);
+                            recordKeyFields.Add(keyFieldName);
                         }
-                        returnedItems.Add(rawItem);
+                    }
+
+                }
+
+                Logger.Write($"Record has {recordKeyFields.Count} keys: {string.Join(", ", recordKeyFields)}");
+
+                Logger.Write("Finding related tables.");
+
+                var keyFieldsForInClause = "'" + string.Join("', '", recordKeyFields) + "'";
+
+                using (OracleCommand relatedTableCommand = new OracleCommand($"SELECT CASE WHEN SQLTABLENAME = ' ' THEN 'PS_' || RECNAME ELSE SQLTABLENAME END FROM PSRECDEFN WHERE RECNAME IN  (SELECT DISTINCT RECNAME FROM PSRECFIELD WHERE FIELDNAME IN({keyFieldsForInClause}) AND MOD(USEEDIT, 2) = 1 GROUP BY RECNAME HAVING COUNT(FIELDNAME) = {recordKeyFields.Count}) AND RECTYPE = 0 AND RECNAME <> '{_item.Record}'", _conn))
+                {
+                    using (var reader = relatedTableCommand.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            var relatedTable = reader.GetString(0);
+                            relatedTables.Add(relatedTable);
+                        }
                     }
                 }
+
+                Logger.Write($"Found {relatedTables.Count} Related Tables.");
+
+                Logger.Write($"Processing top level rows for {_item.Record}");
+
+                var likeString = $"{_item.FilterField} LIKE '" + string.Join($"%' OR {_item.FilterField} LIKE '", _prefixes) + "%'";
+
+                /* get the actual table name */
+                var topTableName = "";
+                using (OracleCommand actualTableName = new OracleCommand($"SELECT CASE WHEN SQLTABLENAME = ' ' THEN 'PS_' || RECNAME ELSE SQLTABLENAME END FROM PSRECDEFN WHERE RECNAME ='{_item.Record}'", _conn))
+                {
+                    using (var reader = actualTableName.ExecuteReader())
+                    {
+                        reader.Read();
+                        topTableName = reader.GetString(0);
+                    }
+                }
+
+                using (OracleCommand topLevelRows = new OracleCommand($"SELECT * FROM {topTableName} WHERE {likeString} ", _conn))
+                {
+                    using (var reader = topLevelRows.ExecuteReader())
+                    {
+                        var dataTable = reader.GetSchemaTable();
+                        while (reader.Read())
+                        {
+                            var rawItem = DataItemFromReader(dataTable, reader);
+
+                            if (_item.IncludeRelated)
+                            {
+                                LoadRelatedTables(recordKeyFields, relatedTables, rawItem);
+                            }
+                            entryItems.Add(rawItem);
+                        }
+                    }
+                }
+
+                returnedItems.Add(_item, entryItems);
             }
-            Logger.Write("Loaded " + returnedItems.Count + " Items...");
 
             return returnedItems;
         }
