@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Pivet.Data
 {
-    class ChangedItem
+    public class ChangedItem
     {
         public string FilePath;
         public string OperatorId;

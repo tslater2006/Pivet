@@ -15,7 +15,7 @@ namespace Pivet.Data
 
     }
 
-    interface IDataProcessor
+    public interface IDataProcessor
     {
         //int LoadItems(OracleConnection conn, FilterConfig filters, int modifyThreshold, VersionState versionState);
         int LoadItems(OracleConnection conn, FilterConfig filters);

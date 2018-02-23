@@ -3,6 +3,7 @@ using Pivet.Data;
 using System;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 
 namespace Pivet
 {
@@ -11,6 +12,18 @@ namespace Pivet
         public static Config GlobalConfig;
         static void Main(string[] args)
         {
+            /* Load any plugin DLLs */
+            if (Directory.Exists("plugins"))
+            {
+                DirectoryInfo dir = new DirectoryInfo("plugins");
+
+                foreach (FileInfo file in dir.GetFiles("*.dll"))
+                {
+                    Logger.Write("Loaded plugin: " + file.Name);
+                    Assembly assembly = Assembly.LoadFrom(file.FullName);
+                }
+            }
+
             var configFile = "config.json";
             var profileToRun = "";
             var wantsBuilder = false;
