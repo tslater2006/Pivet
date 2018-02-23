@@ -206,6 +206,11 @@ namespace Pivet
 
             /* ModifyRepository(profile.Repository); */
 
+            if (profile.DataProviders.Contains(new RawDataProcessor().ProcessorID))
+            {
+                ConfigureRawData(profile.Filters.RawData);
+            }
+
             var configRemoteRepo = "n";
             PromptWithDefault("Would you like to configure a remote repository? (y/n)", ref configRemoteRepo);
             if (configRemoteRepo == "y")
@@ -230,6 +235,69 @@ namespace Pivet
             }
 
             SaveConfig();
+        }
+
+        static void ConfigureRawData(List<RawDataEntry> entries)
+        {
+            Logger.Write("Pivet supports the concept of Raw Data, which allows for arbitrary tools tables to be included in the version control where builtin support does not exist.");
+            string configureRawData = "y";
+            PromptWithDefault("Would you like to configure Raw Data entries? (y/n)", ref configureRawData);
+
+            if (configureRawData != "y")
+            {
+                return;
+            }
+
+            if (entries.Count > 0)
+            {
+                string modifyExisting = "n";
+                PromptWithDefault("You have existing Raw Data entries, would you like to modify one? (y/n)", ref modifyExisting);
+
+                while (modifyExisting == "y")
+                {
+                    var selectedItem = PromptWithList("Please select which existing item you want to modify", entries);
+
+                    ModifyRawData(selectedItem);
+
+                    PromptWithDefault("Would you like to modify another existing item? (y/n)", ref modifyExisting);
+                }
+            }
+            string addNewEntry = (entries.Count > 0 ? "n" : "y");
+
+            PromptWithDefault("Would you like to add a new Raw Data entry? (y/n)", ref addNewEntry);
+
+            while (addNewEntry == "y")
+            {
+                RawDataEntry entry = new RawDataEntry();
+                entries.Add(entry);
+                ModifyRawData(entry);
+
+                PromptWithDefault("Would you like to add a new Raw Data entry? (y/n)", ref addNewEntry);
+            }
+        }
+
+        static void ModifyRawData(RawDataEntry entry)
+        {
+            var recordName = entry.Record;
+            PromptWithDefault("Please enter the record name (ex: PSPNLDEFN)", ref recordName);
+
+            var filterField = entry.FilterField;
+            PromptWithDefault("Please enter the field name for item prefix filtering (ex: PNLNAME)", ref filterField);
+
+            var namePattern = entry.NamePattern;
+            PromptWithDefault("Please enter the filename pattern for this entry (ex: {PNLNAME}.page)", ref namePattern);
+
+            var folderName = entry.Folder;
+            PromptWithDefault("Please enter the root folder name for this entry (ex: Pages)", ref folderName);
+
+            var includedRelated = "n";
+            PromptWithDefault("Would you like to include related tables? (y/n)", ref includedRelated);
+
+            entry.Record = recordName;
+            entry.FilterField = filterField;
+            entry.NamePattern = namePattern;
+            entry.Folder = folderName;
+            entry.IncludeRelated = (includedRelated == "y");
         }
 
         static void ModifyRepository(RepositoryConfig repo)
