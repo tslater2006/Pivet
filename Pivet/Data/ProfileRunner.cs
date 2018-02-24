@@ -115,7 +115,7 @@ namespace Pivet.Data
         static List<IDataProcessor> FindProviders()
         {
             var type = typeof(IDataProcessor);
-            return AppDomain.CurrentDomain.GetAssemblies().SelectMany(s => s.GetTypes()).Where(p => type.IsAssignableFrom(p) && !p.IsInterface && !p.IsAbstract).Select(s => Activator.CreateInstance(s) as IDataProcessor).ToList();
+            return AppDomain.CurrentDomain.GetAssemblies().Where(a => a.GetName().Name.Equals("Pivet")).SelectMany(s => s.GetTypes()).Where(p => type.IsAssignableFrom(p) && !p.IsInterface && !p.IsAbstract).Select(s => Activator.CreateInstance(s) as IDataProcessor).ToList();
         }
     }
 }
