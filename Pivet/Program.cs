@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json;
 using Pivet.Data;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -9,9 +10,13 @@ namespace Pivet
 {
     class Program
     {
+        public static List<Assembly> LoadedAssemblies = new List<Assembly>();
+
         public static Config GlobalConfig;
         static void Main(string[] args)
         {
+            /* Add main Pivet assembly */
+            LoadedAssemblies.Add(Assembly.GetExecutingAssembly());
             /* Load any plugin DLLs */
             if (Directory.Exists("plugins"))
             {
@@ -21,6 +26,11 @@ namespace Pivet
                 {
                     Logger.Write("Loaded plugin: " + file.Name);
                     Assembly assembly = Assembly.LoadFrom(file.FullName);
+
+                    if (assembly.GetTypes().Where(p => (typeof(IDataProcessor).IsAssignableFrom(p) && !p.IsInterface && !p.IsAbstract)).Count() > 0)
+                    {
+                        LoadedAssemblies.Add(assembly);
+                    }
                 }
             }
 

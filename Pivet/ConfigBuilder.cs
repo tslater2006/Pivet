@@ -189,7 +189,7 @@ namespace Pivet
         }
         static List<string> FindProviders() {
             var type = typeof(IDataProcessor);
-            return AppDomain.CurrentDomain.GetAssemblies().SelectMany(s => s.GetTypes()).Where(p => type.IsAssignableFrom(p) && !p.IsInterface && !p.IsAbstract).Select(t => (Activator.CreateInstance(t) as IDataProcessor).ProcessorID).ToList();
+            return AppDomain.CurrentDomain.GetAssemblies().Where(a => Program.LoadedAssemblies.Contains(a)).SelectMany(s => s.GetTypes()).Where(p => type.IsAssignableFrom(p) && !p.IsInterface && !p.IsAbstract).Select(t => (Activator.CreateInstance(t) as IDataProcessor).ProcessorID).ToList();
         }
         static void ModifyProfile(ProfileConfig profile)
         {

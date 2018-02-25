@@ -38,5 +38,5 @@ Within the `Pivet/Pivet` directory, run:
 
 ```
 dotnet build -f netcoreapp2.0
-dotrun run -f netcoreapp2.0
+dotnet run -f netcoreapp2.0
 ```
