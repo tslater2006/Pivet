@@ -77,18 +77,18 @@ dotnet build -c Release -f netcoreapp2.0 -r linux-x64
 Create a directory to hold the Pivet executable
 
 ```
-sudo mkdir /etc/Pivet
+sudo mkdir /opt/Pivet
 ```
 Copy the build results
 ```
-cp bin/Release/netcoreapp2.0/linux-x64/* /etc/Pivet/
+cp bin/Release/netcoreapp2.0/linux-x64/* /opt/Pivet/
 ```
 Modify permissions
 ```
-sudo chmod 755 /etc/Pivet/*
+sudo chmod 755 /opt/Pivet/*
 ```
 Add a symlink to /usr/bin
 ```
-sudo ln -s /etc/Pivet/Pivet /usr/bin/Pivet
+sudo ln -s /opt/Pivet/Pivet /usr/bin/Pivet
 ```
 At this point you should be able to run `Pivet` from anywhere
