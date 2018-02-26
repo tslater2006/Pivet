@@ -81,7 +81,7 @@ namespace Pivet.Data
                 {
                     var fileName = item.FilePath.Replace(_repoBase + Path.DirectorySeparatorChar, "");
                     fileName = fileName.Replace("\\", "/");
-                    _repository.Index.Add(fileName);
+                    Commands.Stage(_repository, fileName);
                     current++;
                     ReportProgress(((int)(((current / total) * 10000)) / (double)100));
                 }
@@ -98,7 +98,7 @@ namespace Pivet.Data
 
             foreach (var f in deletedFiles)
             {
-                _repository.Index.Remove(f.FilePath);
+                Commands.Stage(_repository, f.FilePath);
             }
 
             if (deletedFiles.Count > 0)
