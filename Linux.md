@@ -1,7 +1,9 @@
 # Running on Linux
 
-A few notes on how to get started with DotNet on Linux to run Pivet.
-This was run on RedHat 7.5 Beta, so you will likely find differences.
+Depending on the distrobution you are running, the build instructions can differ. 
+
+Currently there are build instructions for RedHat, Ubuntu, and Oracle Linux.
+
 ## RedHat
 ### Installing Prerequisites
 
@@ -20,15 +22,6 @@ yum update
 yum -y install scl-utils rh-dotnet20 git
 ```
 
-Then follow the [Mono project documentation](http://www.mono-project.com/download/stable/#download-lin-centos)
-to install those prerequisites:
-
-```
-rpm --import "http://keyserver.ubuntu.com/pks/lookup?op=get&search=0x3FA7E0328081BFF6A14DA29AA6A19B38D3D831EF"
-su -c 'curl https://download.mono-project.com/repo/centos7-stable.repo | tee /etc/yum.repos.d/mono-centos7-stable.repo'
-yum -y install mono-devel
-```
-
 Then enable dotnet support in your session (this modifies your PATH to include
 dotnet20): `scl enable rh-dotnet20 bash`
 
@@ -38,9 +31,13 @@ Then clone Pivet from GitHub like usual.
 Within the `Pivet/Pivet` directory, run:
 
 ```
-dotnet build -f netcoreapp2.0
-dotnet run -f netcoreapp2.0
+dotnet restore
+dotnet build -c Release -f netcoreapp2.0 -r linux-x64
 ```
+
+### Rebuild LibGit2 Native
+TBD
+
 ## Ubuntu 16.04
 
 ### Installing Pre-Requisites
@@ -73,6 +70,79 @@ Restore pacakges and run a release build
 dotnet restore
 dotnet build -c Release -f netcoreapp2.0 -r linux-x64
 ```
+### Executable setup
+Create a directory to hold the Pivet executable
+
+```
+sudo mkdir /opt/Pivet
+```
+Copy the build results
+```
+cp bin/Release/netcoreapp2.0/linux-x64/* /opt/Pivet/
+```
+Modify permissions
+```
+sudo chmod 755 /opt/Pivet/*
+```
+Add a symlink to /usr/bin
+```
+sudo ln -s /opt/Pivet/Pivet /usr/bin/Pivet
+```
+At this point you should be able to run `Pivet` from anywhere
+
+## Oracle Linux 7
+
+### Install Pre-Requisites
+Add Microsoft's GPG Key:
+```
+sudo rpm --import https://packages.microsoft.com/keys/microsoft.asc
+udo sh -c 'echo -e "[packages-microsoft-com-prod]\nname=packages-microsoft-com-prod \nbaseurl=https://packages.microsoft.com/yumrepos/microsoft-rhel7.3-prod\nenabled=1\ngpgcheck=1\ngpgkey=https://packages.microsoft.com/keys/microsoft.asc" > /etc/yum.repos.d/dotnetdev.repo'
+```
+
+Install required software:
+```
+sudo yum update
+sudo yum install libunwind libicu git cmake libcurl gcc 
+sudo yum install dotnet-sdk-2.0.0
+```
+### Building Pivet
+First clone the repository
+```
+git clone https://github.com/tslater2006/Pivet.git
+```
+Go to the Pivet project folder
+```
+cd Pivet/Pivet
+```
+Restore pacakges and run a release build
+```
+dotnet restore
+dotnet build -c Release -f netcoreapp2.0 -r linux-x64
+```
+
+### Rebuild LibGit2 Native
+In a working directory, clone the LibGit2Sharp Native Binaries repository and build
+```
+git clone --recursive https://github.com/libgit2/libgit2sharp.nativebinaries.git
+cd libgit2sharp.nativebinaries/
+./build.libgit2.sh
+```
+
+Now find the new libgit2*.so file
+```
+cd nuget.package/libgit2/linux-x64/native/
+ls libgit2*.so
+pwd
+```
+For the next set of instructions, assume the .so file name is `libgit2-15e1193.so` and has the path
+`/home/vagrant/libgit2sharp.nativebinaries/nuget.package/libgit2/linux-x64/native/`
+
+Navigate to your .nuget directory and copy the new .so file over the existing
+```
+cd ~/.nuget/packages/libgit2sharp.nativebinaries/1.0.192/runtimes/linux-x64/native
+cp /home/vagrant/libgit2sharp.nativebinaries/nuget.package/libgit2/linux-x64/native/libgit2-15e1193.so .
+```
+
 ### Executable setup
 Create a directory to hold the Pivet executable
 
