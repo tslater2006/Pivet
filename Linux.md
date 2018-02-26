@@ -42,4 +42,53 @@ dotnet build -f netcoreapp2.0
 dotnet run -f netcoreapp2.0
 ```
 ## Ubuntu 16.04
-TBD
+
+### Installing Pre-Requisites
+Add Microsoft's GPG key to the list of trusted keys
+```
+sudo apt-get install -y curl git
+curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > microsoft.gpg
+sudo mv microsoft.gpg /etc/apt/trusted.gpg.d/microsoft.gpg
+```
+Then add their repository to apt sources
+```
+sudo sh -c 'echo "deb [arch=amd64] https://packages.microsoft.com/repos/microsoft-ubuntu-xenial-prod xenial main" > /etc/apt/sources.list.d/dotnetdev.list'
+```
+Finally run apt update and install dotnet
+```
+sudo apt update && sudo apt-get install dotnet-sdk-2.1.4
+```
+
+### Building Pivet
+First clone the repository
+```
+git clone https://github.com/tslater2006/Pivet.git
+```
+Go to the Pivet project folder
+```
+cd Pivet/Pivet
+```
+Restore pacakges and run a release build
+```
+dotnet restore
+dotnet build -c Release -f netcoreapp2.0 -r linux-x64
+```
+### Executable setup
+Create a directory to hold the Pivet executable
+
+```
+sudo mkdir /etc/Pivet
+```
+Copy the build results
+```
+cp bin/Release/netcoreapp2.0/linux-x64/* /etc/Pivet/
+```
+Modify permissions
+```
+sudo chmod 755 /etc/Pivet/*
+```
+Add a symlink to /usr/bin
+```
+sudo ln -s /etc/Pivet/Pivet /usr/bin/Pivet
+```
+At this point you should be able to run `Pivet` from anywhere
