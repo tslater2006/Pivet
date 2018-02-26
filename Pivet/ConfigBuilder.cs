@@ -41,6 +41,7 @@ namespace Pivet
                 catch (Exception ex)
                 {
                     Console.Write("Failed to parse configuation file, please validate all required fields are present.");
+                    Console.WriteLine(ex.ToString());
                     Console.ReadKey();
                     return "";
                 }

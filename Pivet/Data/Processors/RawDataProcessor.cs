@@ -19,7 +19,6 @@ namespace Pivet.Data
         public event ProgressHandler ProgressChanged;
         public string ItemName => "Raw Data";
         public string ProcessorID => "RawDataProcessor";
-        string _outputPath;
         OracleConnection _conn;
         List<string> _prefixes;
         List<RawDataEntry> _entries;
@@ -42,7 +41,7 @@ namespace Pivet.Data
                 ProgressChanged(new ProgressEvent() { Progress = progress });
             }
         }
-
+        
         public void ProcessDeletes(string rootFolder)
         {
             foreach (var _item in _entries)

@@ -71,6 +71,14 @@ namespace Pivet.Data.Processors
         {
             throw new NotImplementedException();
         }
+
+        private void ReportProgress(double progress)
+        {
+            if (ProgressChanged != null)
+            {
+                ProgressChanged(new ProgressEvent() { Progress = progress });
+            }
+        }
     }
 
     internal class RegistryDefinition

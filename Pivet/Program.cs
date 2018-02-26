@@ -55,6 +55,12 @@ namespace Pivet
                         wantsBuilder = true;
                     }
                 }
+            } else if (args.Length == 1)
+            {
+                if (args[0].ToLower().Equals("-b"))
+                {
+                    wantsBuilder = true;
+                }
             }
 
             if (File.Exists(configFile) == false)
@@ -87,6 +93,7 @@ namespace Pivet
             catch (Exception ex)
             {
                 Logger.Error("Failed to parse config.json, please validate all required fields are present.");
+                Logger.Error(ex.ToString());
                 Console.ReadKey();
                 return;
             }

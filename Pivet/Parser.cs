@@ -298,7 +298,9 @@ namespace PeopleCodeLib.Decoder
                         {
                             storedTextBuilder.Append(reader.GetString(0));
                         }
-                        catch (Exception e) { }
+                        catch (Exception e) {
+                            Console.WriteLine("Error during decode: " + e.ToString());
+                        }
 
                     }
                 }
