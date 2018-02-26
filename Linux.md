@@ -2,8 +2,8 @@
 
 A few notes on how to get started with DotNet on Linux to run Pivet.
 This was run on RedHat 7.5 Beta, so you will likely find differences.
-
-## Installing Prerequisites
+## RedHat
+### Installing Prerequisites
 
 Following the [RedHat documentation](https://access.redhat.com/documentation/en-us/net_core/2.0/html/getting_started_guide/gs_install_dotnet),
 you will need to enable DotNet support in `vi /etc/yum.repos.d/redhat.repo`
@@ -32,6 +32,7 @@ yum -y install mono-devel
 Then enable dotnet support in your session (this modifies your PATH to include
 dotnet20): `scl enable rh-dotnet20 bash`
 
+### Building Pivet
 Then clone Pivet from GitHub like usual.
 
 Within the `Pivet/Pivet` directory, run:
@@ -40,3 +41,5 @@ Within the `Pivet/Pivet` directory, run:
 dotnet build -f netcoreapp2.0
 dotnet run -f netcoreapp2.0
 ```
+## Ubuntu 16.04
+TBD
