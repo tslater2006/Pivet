@@ -1,20 +1,16 @@
-﻿using NGit.Api;
-using NGit.Transport;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using NGit;
 using System.Threading;
-
+using LibGit2Sharp;
 namespace Pivet.Data
 {
     internal class VersionController
     {
-        private Git _repository;
-        UsernamePasswordCredentialsProvider _credentials;
+        private Repository _repository;
         RepositoryConfig config;
         private string _repoBase;
         double lastProgress;
@@ -32,57 +28,15 @@ namespace Pivet.Data
             {
                 Logger.Write("Repository found, opening.");
                 /* already a git repo */
-                _repository = Git.Open(_repoBase);
-                try
-                {
-                    if (config != null)
-                    {
-                        _credentials = new UsernamePasswordCredentialsProvider(config.User, config.Password);
+                _repository = new Repository(_repoBase);
 
-                        Logger.Write("Issuing pull to get the latest changes.");
-                        _repository.Reset().Call();
-                        var repoConfig = _repository.GetRepository().GetConfig();
-                        string branchName = "master";
-                        string remoteName = "origin";
-                        repoConfig.SetString(ConfigConstants.CONFIG_BRANCH_SECTION, branchName, ConfigConstants.CONFIG_KEY_REMOTE, remoteName);
-                        repoConfig.SetString(ConfigConstants.CONFIG_BRANCH_SECTION, branchName, ConfigConstants.CONFIG_KEY_MERGE, Constants.R_HEADS + branchName);
-                        repoConfig.Save();
-
-                        _repository.Pull().SetCredentialsProvider(_credentials).Call();
-                    }
-                }
-                catch (Exception e) { }
-
-            } else
-            {
-                try
-                {
-                    if (config.Url.Length > 0)
-                    {
-                        _credentials = new UsernamePasswordCredentialsProvider(config.User, config.Password);
-                        Logger.Write("No repository found on disk, trying to clone hosted version.");
-                        var clone = Git.CloneRepository().SetCredentialsProvider(_credentials).SetDirectory(_repoBase).SetURI(config.Url);
-                        _repository = clone.Call();
-
-                        var repoConfig = _repository.GetRepository().GetConfig();
-                        string branchName = "master";
-                        string remoteName = "origin";
-                        repoConfig.SetString(ConfigConstants.CONFIG_BRANCH_SECTION, branchName, ConfigConstants.CONFIG_KEY_REMOTE, remoteName);
-                        repoConfig.SetString(ConfigConstants.CONFIG_BRANCH_SECTION, branchName, ConfigConstants.CONFIG_KEY_MERGE, Constants.R_HEADS + branchName);
-                        repoConfig.Save();
-                    } else
-                    {
-                        _repository = Git.Init().SetDirectory(path).Call();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    /* probably an empty repo */
-                    Logger.Write("Problem cloneing hosted version (may not exist). Creating new repository.");
-                    _repository = Git.Init().SetDirectory(path).Call();
-                }
             }
-            
+            else
+            {
+                Repository.Init(_repoBase);
+                _repository = new Repository(_repoBase);
+            }
+
         }
 
         private void ReportProgress(double progress)
@@ -103,27 +57,21 @@ namespace Pivet.Data
             Logger.Write("");
             double current = 0;
             ReportProgress(0);
-            var status = _repository.Status().Call();
+
+            List<StatusEntry> changedOrNewItems = _repository.RetrieveStatus().Where(p => p.State == FileStatus.ModifiedInWorkdir || p.State == FileStatus.NewInWorkdir).ToList();
 
             List<ChangedItem> newOrModifiedFiles = new List<ChangedItem>();
 
-            var newFiles = status.GetUntracked();
-            foreach (var s in newFiles)
+            foreach (var f in changedOrNewItems)
             {
-                newOrModifiedFiles.Add(adds.Where(p => p.FilePath.Replace(_repoBase + Path.DirectorySeparatorChar, "").Replace("\\","/") == s).First());
+                newOrModifiedFiles.Add(adds.Where(p => p.FilePath.Replace(_repoBase + Path.DirectorySeparatorChar, "").Replace("\\", "/") == f.FilePath).First());
             }
 
-            var moddedFiles = status.GetModified();
-            foreach(var s in moddedFiles)
-            {
-                newOrModifiedFiles.Add(adds.Where(p => p.FilePath.Replace(_repoBase + Path.DirectorySeparatorChar, "").Replace("\\", "/") == s).First());
-            }
-
-            var deletedFiles = status.GetMissing();
+            List<StatusEntry> deletedFiles = _repository.RetrieveStatus().Where(p => p.State == FileStatus.DeletedFromWorkdir || p.State == FileStatus.DeletedFromIndex).ToList();
 
             var opridGroups = newOrModifiedFiles.GroupBy(p => p.OperatorId);
 
-            double total = newFiles.Count + moddedFiles.Count + deletedFiles.Count + 1 + (opridGroups.Count());
+            double total = newOrModifiedFiles.Count + deletedFiles.Count + 1 + (opridGroups.Count());
 
             foreach (var opr in opridGroups)
             {
@@ -133,45 +81,36 @@ namespace Pivet.Data
                 {
                     var fileName = item.FilePath.Replace(_repoBase + Path.DirectorySeparatorChar, "");
                     fileName = fileName.Replace("\\", "/");
-                    _repository.Add().AddFilepattern(fileName).Call();
+                    Commands.Stage(_repository, fileName);
                     current++;
                     ReportProgress(((int)(((current / total) * 10000)) / (double)100));
                 }
 
-                status = _repository.Status().Call();
-                if (status.GetAdded().Count + status.GetChanged().Count > 0)
+                if (newOrModifiedFiles.Count > 0)
                 {
-                    _repository.Commit().SetAuthor(oprid, oprid).SetMessage("Changes made by " + oprid).Call();
+                    Signature author = new Signature(oprid, oprid, DateTime.Now);
+                    Signature committer = author;
+                    Commit commit = _repository.Commit("Changes made by " + oprid, author, committer);
                 }
                 current++;
                 ReportProgress(((int)(((current / total) * 10000)) / (double)100));
             }
 
-            status = _repository.Status().Call();
-            if (status.GetMissing().Count > 0)
+            foreach (var f in deletedFiles)
             {
-                var hasItems = false;
-                foreach (var d in status.GetMissing())
-                {
-                    hasItems = true;
-                    _repository.Rm().AddFilepattern(d).Call();
-                }
-                if (hasItems)
-                {
-                    _repository.Commit().SetAuthor("SYSTEM", "SYSTEM").SetMessage("Deleted Objects").Call();
-                }
+                Commands.Stage(_repository, f.FilePath);
             }
+
+            if (deletedFiles.Count > 0)
+            {
+                Signature author = new Signature("SYSTEM", "SYSTEM", DateTime.Now);
+                Signature committer = author;
+                Commit commit = _repository.Commit("Deleted Objects", author, committer);
+            }
+
             current++;
             ReportProgress(((int)(((current / total) * 10000)) / (double)100));
 
-            status = _repository.Status().Call();
-            Thread.Sleep(2000);
-            if (config.Url.Length > 0)
-            {
-                Logger.Write("Pushing repository changes...");
-                _repository.Push().SetCredentialsProvider(_credentials).Call();
-                Logger.Write("Repository pushed!");
-            }
-         }
+        }
     }
 }

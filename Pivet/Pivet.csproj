@@ -11,8 +11,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="LibGit2Sharp" Version="0.25.0-preview-0073" />
     <PackageReference Include="Newtonsoft.Json" Version="11.0.1" />
-    <PackageReference Include="ngit2" Version="2.1.0.20130924" />
     <PackageReference Include="Portable.BouncyCastle" Version="1.8.1.4" />
   </ItemGroup>
 
