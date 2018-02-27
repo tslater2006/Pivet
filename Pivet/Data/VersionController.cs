@@ -105,9 +105,12 @@ namespace Pivet.Data
                     current++;
                     ReportProgress(((int)(((current / total) * 10000)) / (double)100));
                 }
-                Signature author = new Signature("PIVET", "PIVET", DateTime.Now);
-                Signature committer = author;
-                Commit commit = _repository.Commit("Changes captured by Pivet", author, committer);
+                if (changedOrNewItems.Count > 0)
+                {
+                    Signature author = new Signature("PIVET", "PIVET", DateTime.Now);
+                    Signature committer = author;
+                    Commit commit = _repository.Commit("Changes captured by Pivet", author, committer);
+                }
                 current++;
                 ReportProgress(((int)(((current / total) * 10000)) / (double)100));
             }
