@@ -59,39 +59,55 @@ namespace Pivet.Data
             ReportProgress(0);
 
             List<StatusEntry> changedOrNewItems = _repository.RetrieveStatus().Where(p => p.State == FileStatus.ModifiedInWorkdir || p.State == FileStatus.NewInWorkdir).ToList();
-
-            List<ChangedItem> newOrModifiedFiles = new List<ChangedItem>();
-
-            foreach (var f in changedOrNewItems)
-            {
-                newOrModifiedFiles.Add(adds.Where(p => p.FilePath.Replace(_repoBase + Path.DirectorySeparatorChar, "").Replace("\\", "/") == f.FilePath).First());
-            }
-
             List<StatusEntry> deletedFiles = _repository.RetrieveStatus().Where(p => p.State == FileStatus.DeletedFromWorkdir || p.State == FileStatus.DeletedFromIndex).ToList();
-
-            var opridGroups = newOrModifiedFiles.GroupBy(p => p.OperatorId);
-
-            double total = newOrModifiedFiles.Count + deletedFiles.Count + 1 + (opridGroups.Count());
-
-            foreach (var opr in opridGroups)
+            double total = 0;
+            if (config.CommitByOprid)
             {
-                var oprid = opr.Key;
+                List<ChangedItem> newOrModifiedFiles = new List<ChangedItem>();
 
-                foreach (var item in opr)
+                foreach (var f in changedOrNewItems)
                 {
-                    var fileName = item.FilePath.Replace(_repoBase + Path.DirectorySeparatorChar, "");
-                    fileName = fileName.Replace("\\", "/");
-                    Commands.Stage(_repository, fileName);
+                    newOrModifiedFiles.Add(adds.Where(p => p.FilePath.Replace(_repoBase + Path.DirectorySeparatorChar, "").Replace("\\", "/") == f.FilePath).First());
+                }
+
+                var opridGroups = newOrModifiedFiles.GroupBy(p => p.OperatorId);
+
+                total = newOrModifiedFiles.Count + deletedFiles.Count + 1 + (opridGroups.Count());
+
+                foreach (var opr in opridGroups)
+                {
+                    var oprid = opr.Key;
+
+                    foreach (var item in opr)
+                    {
+                        var fileName = item.FilePath.Replace(_repoBase + Path.DirectorySeparatorChar, "");
+                        fileName = fileName.Replace("\\", "/");
+                        Commands.Stage(_repository, fileName);
+                        current++;
+                        ReportProgress(((int)(((current / total) * 10000)) / (double)100));
+                    }
+
+                    if (newOrModifiedFiles.Count > 0)
+                    {
+                        Signature author = new Signature(oprid, oprid, DateTime.Now);
+                        Signature committer = author;
+                        Commit commit = _repository.Commit("Changes made by " + oprid, author, committer);
+                    }
                     current++;
                     ReportProgress(((int)(((current / total) * 10000)) / (double)100));
                 }
-
-                if (newOrModifiedFiles.Count > 0)
+            } else
+            {
+                total = changedOrNewItems.Count + deletedFiles.Count + 2;
+                foreach (var entry in changedOrNewItems)
                 {
-                    Signature author = new Signature(oprid, oprid, DateTime.Now);
-                    Signature committer = author;
-                    Commit commit = _repository.Commit("Changes made by " + oprid, author, committer);
+                    Commands.Stage(_repository, entry.FilePath);
+                    current++;
+                    ReportProgress(((int)(((current / total) * 10000)) / (double)100));
                 }
+                Signature author = new Signature("PIVET", "PIVET", DateTime.Now);
+                Signature committer = author;
+                Commit commit = _repository.Commit("Changes captured by Pivet", author, committer);
                 current++;
                 ReportProgress(((int)(((current / total) * 10000)) / (double)100));
             }
@@ -99,6 +115,8 @@ namespace Pivet.Data
             foreach (var f in deletedFiles)
             {
                 Commands.Stage(_repository, f.FilePath);
+                current++;
+                ReportProgress(((int)(((current / total) * 10000)) / (double)100));
             }
 
             if (deletedFiles.Count > 0)

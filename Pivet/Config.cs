@@ -113,6 +113,9 @@ namespace Pivet
     public class RepositoryConfig
     {
         [JsonProperty(Required = Required.Always)]
+        public bool CommitByOprid = true;
+
+        [JsonProperty(Required = Required.Always)]
         public string Url = "";
         [JsonProperty(Required = Required.Always)]
         public string User = "";

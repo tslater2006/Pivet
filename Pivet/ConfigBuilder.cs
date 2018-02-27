@@ -205,12 +205,14 @@ namespace Pivet
 
             ModifyFilters(profile.Filters, profile.DataProviders.Contains(new MessageCatalogProcessor().ProcessorID));
 
-            /* ModifyRepository(profile.Repository); */
-
             if (profile.DataProviders.Contains(new RawDataProcessor().ProcessorID))
             {
                 ConfigureRawData(profile.Filters.RawData);
             }
+
+            var commitByOprid = "y";
+            PromptWithDefault("Would you like commits done by OPRID where possible? (y/n)", ref commitByOprid);
+            profile.Repository.CommitByOprid = (commitByOprid == "y");
 
             var configRemoteRepo = "n";
             PromptWithDefault("Would you like to configure a remote repository? (y/n)", ref configRemoteRepo);
