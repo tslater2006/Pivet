@@ -41,13 +41,16 @@ namespace Pivet.Data
 
         private void ReportProgress(double progress)
         {
-            if (lastProgress != progress)
+            if (Program.ShowProgress)
             {
-                Console.CursorLeft = 0;
-                Console.CursorTop--;
+                if (lastProgress != progress)
+                {
+                    Console.CursorLeft = 0;
+                    Console.CursorTop--;
 
-                Console.WriteLine("Progress: " + string.Format("{0:N2}%", progress));
-                lastProgress = progress;
+                    Console.WriteLine("Progress: " + string.Format("{0:N2}%", progress));
+                    lastProgress = progress;
+                }
             }
         }
 

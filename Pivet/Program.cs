@@ -11,7 +11,7 @@ namespace Pivet
     class Program
     {
         public static List<Assembly> LoadedAssemblies = new List<Assembly>();
-
+        public static bool ShowProgress;
         public static Config GlobalConfig;
         static void Main(string[] args)
         {
@@ -37,6 +37,7 @@ namespace Pivet
             var configFile = "config.json";
             var profileToRun = "";
             var wantsBuilder = false;
+            ShowProgress = false;
 
             if (args.Length > 1)
             {
@@ -54,6 +55,10 @@ namespace Pivet
                     {
                         wantsBuilder = true;
                     }
+                    if (args[x].ToLower().Equals("-p"))
+                    {
+                        ShowProgress = true;
+                    }
                 }
             } else if (args.Length == 1)
             {
@@ -61,11 +66,18 @@ namespace Pivet
                 {
                     wantsBuilder = true;
                 }
+                if (args[0].ToLower().Equals("-p"))
+                {
+                    ShowProgress = true;
+                }
             }
 
             if (File.Exists(configFile) == false)
             {
-                configFile = ConfigBuilder.RunBuilder();
+                if (wantsBuilder)
+                {
+                    configFile = ConfigBuilder.RunBuilder();
+                }
 
                 if (configFile == "")
                 {
@@ -133,7 +145,6 @@ namespace Pivet
 
             }
             Logger.Write("All done!");
-            Console.ReadKey();
 
         }
     }

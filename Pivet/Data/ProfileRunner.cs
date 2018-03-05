@@ -64,7 +64,10 @@ namespace Pivet.Data
                     Logger.Write("Could not find the data processor: " + provider);
                 } else
                 {
-                    processor.ProgressChanged += Processor_ProgressChanged;
+                    if (Program.ShowProgress)
+                    {
+                        processor.ProgressChanged += Processor_ProgressChanged;
+                    }
                     Processors.Add(processor);
                     //int itemCount = processor.LoadItems(_conn, config.Filters, config.ModifyThreshold,versionState);
                     int itemCount = processor.LoadItems(_conn, profile.Filters);
