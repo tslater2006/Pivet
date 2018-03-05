@@ -67,11 +67,11 @@ namespace Pivet.Data
             if (config.CommitByOprid)
             {
                 List<ChangedItem> newOrModifiedFiles = new List<ChangedItem>();
-                total = newOrModifiedFiles.Count;
+                total = changedOrNewItems.Count;
 
                 foreach (var f in changedOrNewItems)
                 {
-                    newOrModifiedFiles.Add(adds.Where(p => p.FilePath.Replace(_repoBase + Path.DirectorySeparatorChar, "").Replace("\\", "/") == f.FilePath).First());
+                    newOrModifiedFiles.Add(adds.Where(p => p.RepoPath == f.FilePath).First());
 		    current++;
                     ReportProgress(((int)(((current / total) * 10000)) / (double)100));
                 }
@@ -82,18 +82,20 @@ namespace Pivet.Data
                 current = 0;
                 total = newOrModifiedFiles.Count + deletedFiles.Count + 1 + (opridGroups.Count());
 
+                Logger.Write("Processing staged changes...");
+                Logger.Write("");
                 foreach (var opr in opridGroups)
                 {
                     var oprid = opr.Key;
 
-                    foreach (var item in opr)
-                    {
-                        var fileName = item.FilePath.Replace(_repoBase + Path.DirectorySeparatorChar, "");
-                        fileName = fileName.Replace("\\", "/");
-                        Commands.Stage(_repository, fileName);
-                        current++;
-                        ReportProgress(((int)(((current / total) * 10000)) / (double)100));
-                    }
+		    var staged = opr.Select(o => o.RepoPath).ToList();
+		    Commands.Stage(_repository, staged);
+//                    foreach (var item in opr)
+//                    {
+//                        Commands.Stage(_repository, item.RepoPath);
+//                       current++;
+//                        ReportProgress(((int)(((current / total) * 10000)) / (double)100));
+//                    }
 
                     if (newOrModifiedFiles.Count > 0)
                     {

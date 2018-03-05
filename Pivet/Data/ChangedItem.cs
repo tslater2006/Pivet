@@ -9,6 +9,7 @@ namespace Pivet.Data
     public class ChangedItem
     {
         public string FilePath;
+        public string RepoPath;
         public string OperatorId;
     }
 }
