@@ -71,9 +71,7 @@ namespace Pivet.Data.Processors
             foreach (var i in selectedItems)
             {
                 if (i.SaveToDirectory(_conn, ppcDirectory)) {
-                    changes.Add(new ChangedItem() { FilePath = i.FilePath,
-                                RepoPath = i.FilePath.Replace("/home/ripleymj/hrgit2" + Path.DirectorySeparatorChar, "").Replace("\\", "/"),
-				    OperatorId = i.lastOprid});
+                    changes.Add(new ChangedItem(i.FilePath, i.lastOprid));
                 }
 
                 current++;

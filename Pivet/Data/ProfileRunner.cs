@@ -13,6 +13,9 @@ namespace Pivet.Data
 {
     class ProfileRunner
     {
+        [ThreadStatic]
+        public static string profileRepoPath;
+
         static double lastProgress;
         public static Tuple<bool,string> Run(ProfileConfig profile, EnvironmentConfig config)
         {
@@ -28,6 +31,8 @@ namespace Pivet.Data
 
             VersionController versionController = new VersionController();
             versionController.InitRepository(profile.OutputFolder, profile.Repository);
+
+	    profileRepoPath = profile.OutputFolder;
 
             /* First thing is to get DB connection */
             var connectionProvider = config.Connection.Provider;

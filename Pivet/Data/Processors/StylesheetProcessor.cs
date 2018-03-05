@@ -96,7 +96,7 @@ namespace Pivet.Data.Processors
                 var fileName = GetFilePathForCSS(rootFolder, item.StylesheetName);
 
                 File.WriteAllText(fileName, item.GetContents(_conn));
-                changedItems.Add(new ChangedItem() { FilePath = fileName, OperatorId = item.Oprid});
+                changedItems.Add(new ChangedItem(fileName, item.Oprid));
 
                 current++;
                 ReportProgress(((int)(((current / total) * 10000))/(double)100));

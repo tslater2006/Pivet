@@ -170,7 +170,7 @@ namespace Pivet.Data.Processors
                 var filePath = Path.Combine(xlatPath, set.Key + ".json");
                 File.WriteAllText(filePath, jsonText);
 
-                changedItems.Add(new ChangedItem() { FilePath = filePath, OperatorId = "Translate Values"});
+                changedItems.Add(new ChangedItem(filePath, "Translate Values"));
             }
             return changedItems;
         }

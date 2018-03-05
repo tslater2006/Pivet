@@ -112,7 +112,7 @@ namespace Pivet.Data.Processors
                 var filePath = Path.Combine(msgCatPath, set.Key + ".json");
                 File.WriteAllText(filePath, jsonText);
 
-                changedItems.Add(new ChangedItem() { FilePath = filePath, OperatorId = "MessageCats"});
+                changedItems.Add(new ChangedItem(filePath, "MessageCats"));
             }
             return changedItems;
         }

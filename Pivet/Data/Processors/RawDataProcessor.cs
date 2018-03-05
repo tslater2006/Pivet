@@ -81,7 +81,6 @@ namespace Pivet.Data
 
         private ChangedItem SaveRawDataItem(string path, string pattern, RawDataItem item)
         {
-            ChangedItem CI = new ChangedItem();
             /* build out file name */
             Regex placeHolder = new Regex("{([^}]+)}");
             var filePath = path + Path.DirectorySeparatorChar + pattern;
@@ -100,21 +99,20 @@ namespace Pivet.Data
                 filePath = filePath.Replace("{" + col + "}", colValue);
             }
            
-
-            CI.FilePath = filePath;
+	    string oprID;
             if (item.Fields.ContainsKey("LASTUPDOPRID"))
             {
-                CI.OperatorId = item.Fields["LASTUPDOPRID"].ToString();
+                oprID = item.Fields["LASTUPDOPRID"].ToString();
             } else
             {
-                CI.OperatorId = "RAWDATA";
+                oprID = "RAWDATA";
             }
             
 
             Directory.CreateDirectory(Path.GetDirectoryName(filePath));
             File.WriteAllText(filePath, JsonConvert.SerializeObject(item,Formatting.Indented));
 
-            return CI;
+            return new ChangedItem(filePath, oprID);
         }
 
         private Dictionary<RawDataEntry, List<RawDataItem>> GetItems()
