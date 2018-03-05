@@ -64,14 +64,19 @@ namespace Pivet.Data
             if (config.CommitByOprid)
             {
                 List<ChangedItem> newOrModifiedFiles = new List<ChangedItem>();
+                total = newOrModifiedFiles.Count;
 
                 foreach (var f in changedOrNewItems)
                 {
                     newOrModifiedFiles.Add(adds.Where(p => p.FilePath.Replace(_repoBase + Path.DirectorySeparatorChar, "").Replace("\\", "/") == f.FilePath).First());
+		    current++;
+                    ReportProgress(((int)(((current / total) * 10000)) / (double)100));
                 }
 
+                Logger.Write("Processing OPRID groups...");
                 var opridGroups = newOrModifiedFiles.GroupBy(p => p.OperatorId);
 
+                current = 0;
                 total = newOrModifiedFiles.Count + deletedFiles.Count + 1 + (opridGroups.Count());
 
                 foreach (var opr in opridGroups)
