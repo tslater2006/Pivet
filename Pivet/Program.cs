@@ -157,7 +157,8 @@ namespace Pivet
         {
             if (!Quiet)
             {
-                Console.WriteLine($"[MSG] {str}");
+                DateTime now = DateTime.Now;
+                Console.WriteLine($"[MSG] [{now}] {str}");
             }
         }
 
