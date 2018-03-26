@@ -317,6 +317,47 @@ namespace PeopleCodeLib.Decoder
             {
                 keys.Add(new Tuple<int, string>(0, " "));
             }
+
+            /* Prefer PSPCMTEXT over decoding */
+            try
+            {
+                StringBuilder sb = new StringBuilder();
+                using (var getProgram = new OracleCommand("SELECT PCTEXT FROM PSPCMTXT WHERE OBJECTID1 = :1 AND OBJECTVALUE1 = :2 AND OBJECTID2 = :3 AND OBJECTVALUE2 = :4 AND OBJECTID3 = :5 AND OBJECTVALUE3 = :6 AND OBJECTID4 = :7 AND OBJECTVALUE4 = :8 AND OBJECTID5 = :9 AND OBJECTVALUE5 = :10 AND OBJECTID6 = :11 AND OBJECTVALUE6 = :12 AND OBJECTID7 = :13 AND OBJECTVALUE7 = :14 ORDER BY PROGSEQ", conn))
+                {
+                    for (var x = 0; x < 7; x++)
+                    {
+                        OracleParameter paramId = new OracleParameter();
+                        paramId.OracleDbType = OracleDbType.Int32;
+                        paramId.Value = keys[x].Item1;
+
+                        OracleParameter paramValue = new OracleParameter();
+                        paramValue.OracleDbType = OracleDbType.Varchar2;
+                        paramValue.Value = keys[x].Item2;
+
+                        getProgram.Parameters.Add(paramId);
+                        getProgram.Parameters.Add(paramValue);
+                    }
+
+                    using (var reader = getProgram.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            var clob = reader.GetOracleClob(0);
+                            sb.Append(clob.Value);
+                            clob.Close();
+                        }
+                        reader.Close();
+                    }
+                }
+                if (sb.Length > 0)
+                {
+                    return sb.ToString();
+                }
+            } catch(Exception e)
+            {
+                
+            }
+
             MemoryStream ms = new MemoryStream();
             using (var getProgram = new OracleCommand("SELECT PROGTXT FROM PSPCMPROG WHERE OBJECTID1 = :1 AND OBJECTVALUE1 = :2 AND OBJECTID2 = :3 AND OBJECTVALUE2 = :4 AND OBJECTID3 = :5 AND OBJECTVALUE3 = :6 AND OBJECTID4 = :7 AND OBJECTVALUE4 = :8 AND OBJECTID5 = :9 AND OBJECTVALUE5 = :10 AND OBJECTID6 = :11 AND OBJECTVALUE6 = :12 AND OBJECTID7 = :13 AND OBJECTVALUE7 = :14 ORDER BY PROGSEQ", conn))
             {
