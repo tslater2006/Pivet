@@ -60,12 +60,23 @@ namespace Pivet
 
     public class RawDataEntry
     {
+        [JsonProperty(Required = Required.Always)]
         public string Record = "";
+
+        [JsonProperty(Required = Required.Always)]
         public string FilterField = "";
+
+        [JsonProperty(Required = Required.Always)]
         public string NamePattern = "";
+
+        [JsonProperty(Required = Required.Always)]
         public string Folder = "";
+
+        [JsonProperty(Required = Required.Always)]
         public bool IncludeRelated = false;
 
+        [JsonProperty(Required = Required.Default)]
+        public List<string> RelatedBlacklist = new List<string>();
         public override string ToString()
         {
             return Record;

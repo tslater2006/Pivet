@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -47,7 +48,11 @@ namespace Pivet.Data
             foreach (var _item in _entries)
             {
                 string outputFolder = rootFolder + Path.DirectorySeparatorChar + _item.Folder;
-
+                if (outputFolder.Contains("{"))
+                {
+                    /* Likely this raw data is using a variable in its path, ignore that and everything after it */
+                    outputFolder = outputFolder.Substring(0, outputFolder.IndexOf("{"));
+                }
                 if (Directory.Exists(outputFolder))
                 {
                     Directory.Delete(outputFolder, true);
@@ -110,9 +115,19 @@ namespace Pivet.Data
             
 
             Directory.CreateDirectory(Path.GetDirectoryName(filePath));
+            CanonicalizeItem(item);
             File.WriteAllText(filePath, JsonConvert.SerializeObject(item,Formatting.Indented));
 
             return new ChangedItem(filePath, oprID);
+        }
+
+        private void CanonicalizeItem(RawDataItem item)
+        {
+            /* for conanoicalization we really only care about the ordering of related rows remains consistent */
+            foreach(var relatedTable in item.RelatedTables)
+            {
+                relatedTable.Rows = relatedTable.Rows.OrderBy(i => i.GetHashCode()).ToList();
+            }
         }
 
         private Dictionary<RawDataEntry, List<RawDataItem>> GetItems()
@@ -126,7 +141,28 @@ namespace Pivet.Data
 
                 List<string> recordKeyFields = new List<string>();
                 List<string> relatedTables = new List<string>();
-
+                bool tableExists = true;
+                /* Ensure the table exists */
+                using (OracleCommand fieldCount = new OracleCommand("SELECT COUNT(FIELDNAME) FROM PSRECFIELD WHERE RECNAME = :1", _conn))
+                {
+                    fieldCount.Parameters.Add(new OracleParameter() { OracleDbType = OracleDbType.Varchar2, Value = _item.Record });
+                    using (var reader = fieldCount.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            if (reader.GetInt32(0) == 0)
+                            {
+                                tableExists = false;
+                            }
+                        }
+                    }
+                }
+                if (tableExists == false)
+                {
+                    Logger.Write($"Skipping record: {_item.Record} since it doesn't exist in target database.");
+                    /* table doesn't exist! */
+                    continue;
+                }
                 using (OracleCommand keyCommand = new OracleCommand("SELECT FIELDNAME FROM PSRECFIELD WHERE RECNAME = :1 AND MOD(USEEDIT,2) = 1", _conn))
                 {
                     keyCommand.Parameters.Add(new OracleParameter() { OracleDbType = OracleDbType.Varchar2, Value = _item.Record });
@@ -155,7 +191,14 @@ namespace Pivet.Data
                         while (reader.Read())
                         {
                             var relatedTable = reader.GetString(0);
-                            relatedTables.Add(relatedTable);
+                            if (_item.RelatedBlacklist.Contains(relatedTable))
+                            {
+                                continue;
+                            }
+                            else
+                            {
+                                relatedTables.Add(relatedTable);
+                            }
                         }
                     }
                 }
@@ -249,7 +292,7 @@ namespace Pivet.Data
                 }
             }
 
-            
+            topLevelItem.RelatedTables = topLevelItem.RelatedTables.OrderBy(t => t.TableName).ToList();
 
 
         }
@@ -276,6 +319,24 @@ namespace Pivet.Data
     {
         public Dictionary<string, object> Fields = new Dictionary<string, object>();
         public List<RawDataRelatedTable> RelatedTables = new List<RawDataRelatedTable>();
+
+        public override int GetHashCode()
+        {
+            var encoder = new UTF8Encoding();
+            var hash = new SHA256CryptoServiceProvider();
+            var sb = new StringBuilder();
+
+            foreach (var item in Fields.Values)
+            {
+                sb.Append(item);
+            }
+
+            return
+                BitConverter.ToInt32(
+                    new Rfc2898DeriveBytes(sb.ToString(),
+                        hash.ComputeHash(encoder.GetBytes(sb.ToString()))).GetBytes(4),0);
+        }
+
     }
 
     class RawDataRelatedTable
