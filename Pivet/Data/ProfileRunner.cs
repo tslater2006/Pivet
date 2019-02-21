@@ -89,6 +89,8 @@ namespace Pivet.Data
             }
             
             Logger.Write("Processing items.");
+            Stopwatch sw2 = new Stopwatch();
+            sw2.Start();
             List<ChangedItem> changedItems = new List<ChangedItem>();
             foreach (var p in Processors)
             {
@@ -98,8 +100,9 @@ namespace Pivet.Data
                 Console.CursorLeft = 0;
                 Processor_ProgressChanged(new ProgressEvent() { Progress = 100 });
             }
-
-            Logger.Write("Definitions saved to disk.");
+            sw2.Stop();
+            
+            Logger.Write("Definitions saved to disk in: " + sw2.Elapsed.TotalSeconds + " seconds");
 
             versionController.ProcessChanges(changedItems);
             sw.Stop();

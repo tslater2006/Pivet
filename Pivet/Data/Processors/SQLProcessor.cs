@@ -50,7 +50,14 @@ namespace Pivet.Data.Processors
                 {
                     while (reader.Read())
                     {
-                        _items.Add(new SQLItem(reader.GetString(0),reader.GetString(1),reader.GetString(2),reader.GetDateTime(3)));
+                        if (reader.IsDBNull(3))
+                        {
+                            _items.Add(new SQLItem(reader.GetString(0), reader.GetString(1), reader.GetString(2), DateTime.MinValue));
+                        }
+                        else
+                        {
+                            _items.Add(new SQLItem(reader.GetString(0), reader.GetString(1), reader.GetString(2), reader.GetDateTime(3)));
+                        }
                     }
                 }
 

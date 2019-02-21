@@ -339,7 +339,7 @@ namespace Pivet.Data.Processors
             Directory.CreateDirectory(directory);
             
 
-            File.WriteAllText(this.FilePath, _programText);
+            File.WriteAllText(this.FilePath, _programText.Trim() );
             _programText = null;
             _saved = true;
             return true;

@@ -55,7 +55,7 @@ namespace Pivet
                     {
                         wantsBuilder = true;
                     }
-                    if (args[x].ToLower().Equals("-p"))
+                    if (args[x].ToLower().Equals("-v"))
                     {
                         ShowProgress = true;
                     }
@@ -66,7 +66,7 @@ namespace Pivet
                 {
                     wantsBuilder = true;
                 }
-                if (args[0].ToLower().Equals("-p"))
+                if (args[0].ToLower().Equals("-v"))
                 {
                     ShowProgress = true;
                 }

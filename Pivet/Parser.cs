@@ -29,6 +29,16 @@ namespace PeopleCodeLib.Decoder
 
     public class Parser
     {
+        public static int parserRuns;
+        public static Stopwatch timeParsing;
+        public static long charsDecoded;
+
+        static Parser()
+        {
+            timeParsing = new Stopwatch();
+            parserRuns = 0;
+        }
+
         int lastByte;
         int nextByte;
 
@@ -320,44 +330,47 @@ namespace PeopleCodeLib.Decoder
 
             /* Prefer PSPCMTEXT over decoding */
             try
-            {
-                StringBuilder sb = new StringBuilder();
-                using (var getProgram = new OracleCommand("SELECT PCTEXT FROM PSPCMTXT WHERE OBJECTID1 = :1 AND OBJECTVALUE1 = :2 AND OBJECTID2 = :3 AND OBJECTVALUE2 = :4 AND OBJECTID3 = :5 AND OBJECTVALUE3 = :6 AND OBJECTID4 = :7 AND OBJECTVALUE4 = :8 AND OBJECTID5 = :9 AND OBJECTVALUE5 = :10 AND OBJECTID6 = :11 AND OBJECTVALUE6 = :12 AND OBJECTID7 = :13 AND OBJECTVALUE7 = :14 ORDER BY PROGSEQ", conn))
-                {
-                    for (var x = 0; x < 7; x++)
-                    {
-                        OracleParameter paramId = new OracleParameter();
-                        paramId.OracleDbType = OracleDbType.Int32;
-                        paramId.Value = keys[x].Item1;
+             {
+                timeParsing.Start();
+                 StringBuilder sb = new StringBuilder();
+                 using (var getProgram = new OracleCommand("SELECT PCTEXT FROM PSPCMTXT WHERE OBJECTID1 = :1 AND OBJECTVALUE1 = :2 AND OBJECTID2 = :3 AND OBJECTVALUE2 = :4 AND OBJECTID3 = :5 AND OBJECTVALUE3 = :6 AND OBJECTID4 = :7 AND OBJECTVALUE4 = :8 AND OBJECTID5 = :9 AND OBJECTVALUE5 = :10 AND OBJECTID6 = :11 AND OBJECTVALUE6 = :12 AND OBJECTID7 = :13 AND OBJECTVALUE7 = :14 ORDER BY PROGSEQ", conn))
+                 {
+                     for (var x = 0; x < 7; x++)
+                     {
+                         OracleParameter paramId = new OracleParameter();
+                         paramId.OracleDbType = OracleDbType.Int32;
+                         paramId.Value = keys[x].Item1;
 
-                        OracleParameter paramValue = new OracleParameter();
-                        paramValue.OracleDbType = OracleDbType.Varchar2;
-                        paramValue.Value = keys[x].Item2;
+                         OracleParameter paramValue = new OracleParameter();
+                         paramValue.OracleDbType = OracleDbType.Varchar2;
+                         paramValue.Value = keys[x].Item2;
 
-                        getProgram.Parameters.Add(paramId);
-                        getProgram.Parameters.Add(paramValue);
-                    }
+                         getProgram.Parameters.Add(paramId);
+                         getProgram.Parameters.Add(paramValue);
+                     }
 
-                    using (var reader = getProgram.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            var clob = reader.GetOracleClob(0);
-                            sb.Append(clob.Value);
-                            clob.Close();
-                        }
-                        reader.Close();
-                    }
-                }
-                if (sb.Length > 0)
-                {
-                    return sb.ToString();
-                }
-            } catch(Exception e)
-            {
-                
-            }
-
+                     using (var reader = getProgram.ExecuteReader())
+                     {
+                         while (reader.Read())
+                         {
+                             var clob = reader.GetOracleClob(0);
+                             sb.Append(clob.Value);
+                             clob.Close();
+                         }
+                         reader.Close();
+                     }
+                 }
+                 if (sb.Length > 0)
+                 {
+                    var retString = sb.ToString();
+                    timeParsing.Stop();
+                     return retString;
+                 }
+             } catch(Exception e)
+             {
+                timeParsing.Stop();
+             }
+            /* timeParsing.Start();*/
             MemoryStream ms = new MemoryStream();
             using (var getProgram = new OracleCommand("SELECT PROGTXT FROM PSPCMPROG WHERE OBJECTID1 = :1 AND OBJECTVALUE1 = :2 AND OBJECTID2 = :3 AND OBJECTVALUE2 = :4 AND OBJECTID3 = :5 AND OBJECTVALUE3 = :6 AND OBJECTID4 = :7 AND OBJECTVALUE4 = :8 AND OBJECTID5 = :9 AND OBJECTVALUE5 = :10 AND OBJECTID6 = :11 AND OBJECTVALUE6 = :12 AND OBJECTID7 = :13 AND OBJECTVALUE7 = :14 ORDER BY PROGSEQ", conn))
             {
@@ -429,8 +442,11 @@ namespace PeopleCodeLib.Decoder
                 getReferences.Dispose();
             }
             Parser p = new Parser();
-
-            return p.ParsePPC(ms.ToArray(), references);
+            var returnText = p.ParsePPC(ms.ToArray(), references); ;
+            parserRuns++;
+            /* timeParsing.Stop(); */
+            charsDecoded += returnText.Length;
+            return returnText;
         }
         /*public static PeopleCodeProgram GetProgramByKeys(OracleConnection conn, List<Tuple<int, string>> keys, ParseOptions parseOpts = null)
     {

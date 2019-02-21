@@ -22,9 +22,7 @@ namespace Pivet.Data.Connection
             {
                 Environment.SetEnvironmentVariable("TNS_ADMIN", connParams.TNS_ADMIN);
             }
-
-            OracleConnection conn = new OracleConnection($"Data Source={connParams.TNS};User Id={connParams.BootstrapParameters.User}; Password={connParams.BootstrapParameters.Password};Connection Timeout=120");
-
+            OracleConnection conn = new OracleConnection($"Data Source={connParams.TNS};User Id={connParams.BootstrapParameters.User}; Password={connParams.BootstrapParameters.Password}");
             try
             {
                 conn.Open();
@@ -36,9 +34,13 @@ namespace Pivet.Data.Connection
                 }
                 return new Tuple<OracleConnection, bool, string>(conn, true, "");
             }
+            catch(OracleException oex)
+            {
+                return new Tuple<OracleConnection, bool, string>(null, false, "Failed to get oracle connection: ORA-" + oex.Number);
+            }
             catch (Exception ex)
             {
-                return new Tuple<OracleConnection, bool, string>(null, false, "Failed to get oracle connection: " + ex.Message);
+                return new Tuple<OracleConnection, bool, string>(null, false, "Failed to get oracle connection: " + ex.Message + " " + ex.StackTrace);
             }
         }
 
