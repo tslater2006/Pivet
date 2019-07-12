@@ -11,14 +11,22 @@ using System.Threading.Tasks;
 
 namespace Pivet.Data
 {
-    class ProfileRunner
+    class JobRunner
     {
         [ThreadStatic]
         public static string profileRepoPath;
 
         static double lastProgress;
-        public static Tuple<bool,string> Run(ProfileConfig profile, EnvironmentConfig config)
+        public static Tuple<bool,string> Run(Config global, JobConfig job)
         {
+            ProfileConfig profile = global.Profiles.Where(p => p.Name.Equals(job.ProfileName)).FirstOrDefault();
+            EnvironmentConfig config = global.Environments.Where(p => p.Name.Equals(job.EnvironmentName)).FirstOrDefault();
+
+            if (profile == null || config == null)
+            {
+                return new Tuple<bool, string>(false, "Error running job, either Profile or Environment was not found. ");
+            }
+
             OracleConnection _conn;
             List<IDataProcessor> Processors = new List<IDataProcessor>();
 
@@ -27,12 +35,12 @@ namespace Pivet.Data
             Logger.Write($"Processing Environment '{config.Name}'");
 
             /* ensure root directory exists */
-            Directory.CreateDirectory(profile.OutputFolder);
+            Directory.CreateDirectory(job.OutputFolder);
 
             VersionController versionController = new VersionController();
-            versionController.InitRepository(profile.OutputFolder, profile.Repository);
+            versionController.InitRepository(job.OutputFolder, job.Repository);
 
-	    profileRepoPath = profile.OutputFolder;
+	        profileRepoPath = job.OutputFolder;
 
             /* First thing is to get DB connection */
             var connectionProvider = config.Connection.Provider;
@@ -85,7 +93,7 @@ namespace Pivet.Data
             Logger.Write("Cleaning working directory.");
             foreach(var p in Processors)
             {
-                p.ProcessDeletes(profile.OutputFolder);
+                p.ProcessDeletes(job.OutputFolder);
             }
             
             Logger.Write("Processing items.");
@@ -96,7 +104,7 @@ namespace Pivet.Data
             {
                 Console.WriteLine($"Saving {p.ItemName} Definitions..." );
                 Console.WriteLine();
-                changedItems.AddRange(p.SaveToDisk(profile.OutputFolder));
+                changedItems.AddRange(p.SaveToDisk(job.OutputFolder));
                 Console.CursorLeft = 0;
                 Processor_ProgressChanged(new ProgressEvent() { Progress = 100 });
             }

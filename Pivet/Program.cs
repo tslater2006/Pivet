@@ -35,7 +35,7 @@ namespace Pivet
             }
 
             var configFile = "config.json";
-            var profileToRun = "";
+            var jobToRun = "";
             var wantsBuilder = false;
             ShowProgress = false;
 
@@ -47,9 +47,9 @@ namespace Pivet
                     {
                         configFile = args[x + 1];
                     }
-                    if (args[x].ToLower().Equals("-p"))
+                    if (args[x].ToLower().Equals("-j"))
                     {
-                        profileToRun = args[x + 1];
+                        jobToRun = args[x + 1];
                     }
                     if (args[x].ToLower().Equals("-b"))
                     {
@@ -112,34 +112,34 @@ namespace Pivet
 
             Logger.Write($"Config loaded. {GlobalConfig.Environments.Count} Environment(s) found, {GlobalConfig.Profiles.Count} Profile(s) found.");
             
-            foreach (var profile in GlobalConfig.Profiles)
+            foreach (var job in GlobalConfig.Jobs)
             {
-                if (profileToRun.Length > 0)
+                if (jobToRun.Length > 0)
                 {
-                    if (profile.Name.Equals(profileToRun))
+                    if (job.Name.Equals(jobToRun))
                     {
-                        EnvironmentConfig environment = GlobalConfig.Environments.Where(e => e.Name.Equals(profile.EnvironmentName)).FirstOrDefault();
+                        EnvironmentConfig environment = GlobalConfig.Environments.Where(e => e.Name.Equals(job.EnvironmentName)).FirstOrDefault();
                         if (environment == null)
                         {
-                            Logger.Error($"Could not run profile '{profileToRun}', unable to find environment named '{profile.EnvironmentName}'");
+                            Logger.Error($"Could not run profile '{jobToRun}', unable to find environment named '{job.EnvironmentName}'");
                             return;
                         }
                         else
                         {
-                            ProfileRunner.Run(profile, environment);
+                            JobRunner.Run(GlobalConfig, job);
                         }
                     }
                 }
                 else
                 {
-                    EnvironmentConfig environment = GlobalConfig.Environments.Where(e => e.Name.Equals(profile.EnvironmentName)).FirstOrDefault();
+                    EnvironmentConfig environment = GlobalConfig.Environments.Where(e => e.Name.Equals(job.EnvironmentName)).FirstOrDefault();
                     if (environment == null)
                     {
-                        Logger.Error($"Could not run profile '{profileToRun}', unable to find environment named '{profile.EnvironmentName}'");
+                        Logger.Error($"Could not run profile '{jobToRun}', unable to find environment named '{job.EnvironmentName}'");
                     }
                     else
                     {
-                        ProfileRunner.Run(profile, environment); 
+                        JobRunner.Run(GlobalConfig, job); 
                     }
                 }
 

@@ -18,6 +18,9 @@ namespace Pivet
         [JsonProperty(Required = Required.Always)]
         public List<ProfileConfig> Profiles = new List<ProfileConfig>();
 
+        [JsonProperty(Required = Required.Always)]
+        public List<JobConfig> Jobs = new List<JobConfig>();
+
     }
 
     public class EnvironmentConfig
@@ -33,7 +36,8 @@ namespace Pivet
         }
     }
 
-    public class ProfileConfig
+
+    public class JobConfig
     {
         [JsonProperty(Required = Required.Always)]
         public string Name = "";
@@ -45,12 +49,26 @@ namespace Pivet
         public string EnvironmentName = "";
 
         [JsonProperty(Required = Required.Always)]
+        public string ProfileName = "";
+
+        public RepositoryConfig Repository = new RepositoryConfig();
+
+        public override string ToString()
+        {
+            return this.Name;
+        }
+    }
+
+    public class ProfileConfig
+    {
+        [JsonProperty(Required = Required.Always)]
+        public string Name = "";
+
+        [JsonProperty(Required = Required.Always)]
         public List<string> DataProviders = new List<string>();
 
         [JsonProperty(Required = Required.Always)]
         public FilterConfig Filters = new FilterConfig();
-
-        public RepositoryConfig Repository = new RepositoryConfig();
 
         public override string ToString()
         {

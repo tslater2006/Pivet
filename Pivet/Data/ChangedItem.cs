@@ -16,8 +16,8 @@ namespace Pivet.Data
         public ChangedItem(string FilePath, string OperatorId)
         {
             this.FilePath = FilePath;
-	    this.RepoPath = FilePath.Replace(ProfileRunner.profileRepoPath + Path.DirectorySeparatorChar, "").Replace("\\", "/");
-	    this.OperatorId = OperatorId;
+	        this.RepoPath = FilePath.Replace(JobRunner.profileRepoPath + Path.DirectorySeparatorChar, "").Replace("\\", "/");
+	        this.OperatorId = OperatorId;
         }
     }
 }

@@ -195,8 +195,8 @@ namespace Pivet
         static void ModifyProfile(ProfileConfig profile)
         {
             PromptWithDefault("Please give this profile a name", ref profile.Name);
-            PromptWithDefault("Enter the output path", ref profile.OutputFolder);
-            profile.EnvironmentName = PromptWithList("Select the environment this profile should use", configFile.Environments).Name;
+            // PromptWithDefault("Enter the output path", ref profile.OutputFolder);
+            //profile.EnvironmentName = PromptWithList("Select the environment this profile should use", configFile.Environments).Name;
 
             var availableProviders = FindProviders();
             profile.DataProviders = SelectMultipleFromList<string>("Select which data providers you would like", availableProviders);
@@ -210,11 +210,11 @@ namespace Pivet
                 ConfigureRawData(profile.Filters.RawData);
             }
 
-            var commitByOprid = "y";
-            PromptWithDefault("Would you like commits done by OPRID where possible? (y/n)", ref commitByOprid);
-            profile.Repository.CommitByOprid = (commitByOprid == "y");
+            //var commitByOprid = "y";
+            //PromptWithDefault("Would you like commits done by OPRID where possible? (y/n)", ref commitByOprid);
+            //profile.Repository.CommitByOprid = (commitByOprid == "y");
 
-            var configRemoteRepo = "n";
+            /*var configRemoteRepo = "n";
             PromptWithDefault("Would you like to configure a remote repository? (y/n)", ref configRemoteRepo);
             if (configRemoteRepo == "y")
             {
@@ -235,7 +235,7 @@ namespace Pivet
                     repoConfig.Password = password;
                 }
 
-            }
+            }*/
 
             SaveConfig();
         }
