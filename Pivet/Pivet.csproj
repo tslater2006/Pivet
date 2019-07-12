@@ -17,8 +17,9 @@
   <ItemGroup>
     <PackageReference Include="LibGit2Sharp" Version="0.25.0-preview-0073" />
     <PackageReference Include="Newtonsoft.Json" Version="11.0.1" />
-    <PackageReference Include="Oracle.ManagedDataAccess" Version="18.3.0" />
+    <PackageReference Include="Oracle.ManagedDataAccess.Core" Version="2.19.31" />
     <PackageReference Include="Portable.BouncyCastle" Version="1.8.1.4" />
+    <PackageReference Include="System.Configuration.ConfigurationManager" Version="4.5.0" />
   </ItemGroup>
 
   <ItemGroup>
