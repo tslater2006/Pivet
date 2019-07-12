@@ -33,8 +33,36 @@ namespace Pivet.Data
             }
             else
             {
-                Repository.Init(_repoBase);
+                if (config.Url.Length > 0)
+                {
+                    Logger.Write("Repository URL is set, cloning repo to disk.");
+                    /* repository is configured with a remote, try cloning from there */
+                    var co = new CloneOptions();
+                    co.CredentialsProvider = (_url, _user, _cred) => new UsernamePasswordCredentials { Username = config.User, Password = config.Password };
+                    var result = Repository.Clone(config.Url, _repoBase, co);
+                }
+                else
+                {
+                    Repository.Init(_repoBase);
+                }
                 _repository = new Repository(_repoBase);
+            }
+
+            /* confirm this repository has an "origin" remote */
+            if (_repository.Network.Remotes["origin"] != null)
+            {
+                /* there is an origin, make sure it points to the URL in config */
+                if (_repository.Network.Remotes["origin"].Url.Equals(config.Url) == false)
+                {
+                    Logger.Write("Repository origin doesn't match config. Updating...");
+                    _repository.Network.Remotes.Update("origin", r => r.Url = config.Url);
+                }
+            }
+            else
+            {
+                Logger.Write("Repository doesn't have an origin. Adding...");
+                /* no origin, lets set one if we have a URL */
+                _repository.Network.Remotes.Add("origin", config.Url);
             }
 
         }
@@ -112,6 +140,44 @@ namespace Pivet.Data
                 Signature author = new Signature("SYSTEM", "SYSTEM", DateTime.Now);
                 Signature committer = author;
                 Commit commit = _repository.Commit("Deleted Objects", author, committer);
+            }
+
+            /* We have commited all changes, time to push if setup with a URL */
+            if (this.config.Url.Length > 0)
+            {
+                Logger.Write("Pushing repository to origin.");
+                Remote remote = _repository.Network.Remotes["origin"];
+                var options = new PushOptions();
+                options.CredentialsProvider = (_url, _user, _cred) =>
+                    new UsernamePasswordCredentials { Username = this.config.User, Password = this.config.Password };
+                options.OnPackBuilderProgress = (x, y, z) =>
+                {
+                    Console.CursorLeft = 0;
+                    Console.CursorTop--;
+                    Logger.Write(x + " (" + y + "/" + z + ")                              ");
+                    return true;
+                };
+
+                options.OnPushTransferProgress = (x, y, z) =>
+                {
+                    Console.CursorLeft = 0;
+                    Console.CursorTop--;
+                    Logger.Write("Pushing objects (" + x + "/" + y + ")                                 ");
+                    return true;
+                };
+
+                options.OnPushStatusError = (x) =>
+                {
+                    Logger.Write("Push Error: " + x.Message);
+                };
+                try
+                {
+                    _repository.Network.Push(remote, @"refs/heads/master", options);
+                }
+                catch (Exception ex)
+                {
+                    Logger.Write("Exception occured while pushing to remote: " + ex.ToString());
+                }
             }
         }
     }
