@@ -62,7 +62,10 @@ namespace Pivet.Data
             {
                 Logger.Write("Repository doesn't have an origin. Adding...");
                 /* no origin, lets set one if we have a URL */
-                _repository.Network.Remotes.Add("origin", config.Url);
+                if (config.Url.Length > 0)
+                {
+                    _repository.Network.Remotes.Add("origin", config.Url);
+                }
             }
 
         }
