@@ -26,7 +26,7 @@ namespace Pivet.Data.Processors
                 StringBuilder sb = new StringBuilder();
                 if (filters.Projects != null && filters.Projects.Count > 0)
                 {
-                    sb.Append("select A.FIELDNAME from PSXLATITEM A, PSPROJECTITEM B WHERE B.OBJECTTYPE = 4 and B.OBJECTVALUE1 = A.FIELDNAME and B.OBJECTVALUE2 = A.FIELDVALUE and B.PROJECTNAME in (");
+                    sb.Append("select DISTINCT A.FIELDNAME, A.FIELDVALUE from PSXLATITEM A, PSPROJECTITEM B WHERE B.OBJECTTYPE = 4 and B.OBJECTVALUE1 = A.FIELDNAME and B.OBJECTVALUE2 = A.FIELDVALUE and B.PROJECTNAME in (");
                     for (var x = 0; x < filters.Projects.Count; x++)
                     {
                         sb.Append(":" + (x + 1) + ",");
@@ -43,14 +43,14 @@ namespace Pivet.Data.Processors
                 else
                 {
                     //sb.Append("select A.FIELDNAME, A.FIELDVALUE, A.EFFDT, A.EFF_STATUS, A.XLATLONGNAME, A.XLATSHORTNAME, A.LASTUPDDTTM, A.LASTUPDOPRID from PSXLATITEM A");
-                    sb.Append("select A.FIELDNAME FROM PSXLATITEM A");
+                    sb.Append("select DISTINCT A.FIELDNAME, A.FIELDVALUE FROM PSXLATITEM A");
                 }
                 itemLoad.CommandText = sb.ToString();
                 using (var reader = itemLoad.ExecuteReader())
                 {
                     while (reader.Read())
                     {
-                        _items.Add(new TranslateValueItem(reader.GetString(0)));
+                        _items.Add(new TranslateValueItem(reader.GetString(0),reader.GetString(1)));
                     }
                 }
             }
@@ -165,6 +165,13 @@ namespace Pivet.Data.Processors
                     current++;
                     ReportProgress(((int)(((current / total) * 10000))/(double)100));
                 }
+                xlatField.Translates.Sort((a, b) => { return a.FieldValue.CompareTo(b.FieldValue); });
+
+                foreach(var xlat in xlatField.Translates)
+                {
+                    /* sort translations... */
+                    xlat.Translations.Sort((a, b) => { return a.LanguageCode.CompareTo(b.LanguageCode); });
+                }
 
                 var jsonText = JsonConvert.SerializeObject(xlatField, Formatting.Indented);
                 var filePath = Path.Combine(xlatPath, set.Key + ".json");
@@ -177,9 +184,10 @@ namespace Pivet.Data.Processors
 
         private void PopulateItemFromDB(TranslateValueItem item)
         {
-            using (var cmd = new OracleCommand("select A.FIELDVALUE, A.EFFDT, A.EFF_STATUS, A.XLATLONGNAME, A.XLATSHORTNAME, A.LASTUPDDTTM, A.LASTUPDOPRID from PSXLATITEM A WHERE A.FIELDNAME = :1", _conn))
+            using (var cmd = new OracleCommand("select A.FIELDVALUE, A.EFFDT, A.EFF_STATUS, A.XLATLONGNAME, A.XLATSHORTNAME, A.LASTUPDDTTM, A.LASTUPDOPRID from PSXLATITEM A WHERE A.FIELDNAME = :1 AND A.FIELDVALUE = :2", _conn))
             {
                 cmd.Parameters.Add(new OracleParameter() { OracleDbType = OracleDbType.Varchar2, Value = item.FieldName });
+                cmd.Parameters.Add(new OracleParameter() { OracleDbType = OracleDbType.Varchar2, Value = item.FieldValue });
                 using (var reader = cmd.ExecuteReader())
                 {
                     while (reader.Read())
@@ -251,9 +259,10 @@ namespace Pivet.Data.Processors
 
         public List<TranslateValueTranslation> Translations { get; set; }
 
-        public TranslateValueItem(String fieldName)
+        public TranslateValueItem(String fieldName, String fieldValue)
         {
             FieldName = fieldName;
+            FieldValue = fieldValue;
         }
     }
 }
