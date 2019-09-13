@@ -133,7 +133,12 @@ namespace Pivet.Data
                     Commands.Stage(_repository, changedOrNewItems);
                     Signature author = new Signature("PIVET", "PIVET", DateTime.Now);
                     Signature committer = author;
-                    Commit commit = _repository.Commit("Changes captured by Pivet", author, committer);
+                    String commitString = "Changes captured by Pivet";
+                    if (Program.CustomCommitMessage.Length > 0)
+                    {
+                        commitString = Program.CustomCommitMessage;
+                    }
+                    Commit commit = _repository.Commit(commitString, author, committer);
                 }
             }
 

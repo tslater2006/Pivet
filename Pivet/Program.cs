@@ -13,6 +13,7 @@ namespace Pivet
         public static List<Assembly> LoadedAssemblies = new List<Assembly>();
         public static bool ShowProgress;
         public static Config GlobalConfig;
+        public static string CustomCommitMessage;
         static void Main(string[] args)
         {
             /* Add main Pivet assembly */
@@ -33,6 +34,8 @@ namespace Pivet
                     }
                 }
             }
+            /* by default no custom commit message */
+            CustomCommitMessage = "";
 
             var configFile = "config.json";
             var jobToRun = "";
@@ -46,10 +49,12 @@ namespace Pivet
                     if (args[x].ToLower().Equals("-c"))
                     {
                         configFile = args[x + 1];
+                        x++;
                     }
                     if (args[x].ToLower().Equals("-j"))
                     {
                         jobToRun = args[x + 1];
+                        x++;
                     }
                     if (args[x].ToLower().Equals("-b"))
                     {
@@ -58,6 +63,11 @@ namespace Pivet
                     if (args[x].ToLower().Equals("-v"))
                     {
                         ShowProgress = true;
+                    }
+                    if (args[x].ToLower().Equals("-m"))
+                    {
+                        CustomCommitMessage = args[x + 1];
+                        x++;
                     }
                 }
             } else if (args.Length == 1)
