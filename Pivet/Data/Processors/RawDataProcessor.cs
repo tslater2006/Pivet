@@ -265,30 +265,36 @@ namespace Pivet.Data
 
             foreach (string relatedTable in relatedTables)
             {
-                using (var secondaryLevel = new OracleCommand($"SELECT * FROM {relatedTable} {whereClause}",_conn))
+                try
                 {
-                    RawDataRelatedTable relatedTableData = new RawDataRelatedTable();
-                    relatedTableData.TableName = relatedTable;
-                    /* setup the parameters */
-                    foreach (string relatedKey in relatedKeys)
+                    using (var secondaryLevel = new OracleCommand($"SELECT * FROM {relatedTable} {whereClause}", _conn))
                     {
-                        secondaryLevel.Parameters.Add(new OracleParameter() { Value = topLevelItem.Fields[relatedKey] });
-                    }
-
-                    using (var reader = secondaryLevel.ExecuteReader())
-                    {
-                        var dataTable = reader.GetSchemaTable();
-                        while (reader.Read())
+                        RawDataRelatedTable relatedTableData = new RawDataRelatedTable();
+                        relatedTableData.TableName = relatedTable;
+                        /* setup the parameters */
+                        foreach (string relatedKey in relatedKeys)
                         {
-                            var rawItem = DataItemFromReader(dataTable, reader);
-                            relatedTableData.Rows.Add(rawItem);
+                            secondaryLevel.Parameters.Add(new OracleParameter() { Value = topLevelItem.Fields[relatedKey] });
+                        }
+
+                        using (var reader = secondaryLevel.ExecuteReader())
+                        {
+                            var dataTable = reader.GetSchemaTable();
+                            while (reader.Read())
+                            {
+                                var rawItem = DataItemFromReader(dataTable, reader);
+                                relatedTableData.Rows.Add(rawItem);
+                            }
+                        }
+
+                        if (relatedTableData.Rows.Count > 0)
+                        {
+                            topLevelItem.RelatedTables.Add(relatedTableData);
                         }
                     }
-
-                    if (relatedTableData.Rows.Count > 0)
-                    {
-                        topLevelItem.RelatedTables.Add(relatedTableData);
-                    }
+                } catch (Exception ex)
+                {
+                    /* Table probably hasn't been built yet... */
                 }
             }
 
