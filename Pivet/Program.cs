@@ -7,8 +7,7 @@ using System.Linq;
 using System.Reflection;
 
 namespace Pivet
-{
-    class Program
+{    class Program
     {
         public static List<Assembly> LoadedAssemblies = new List<Assembly>();
         public static bool ShowProgress;
