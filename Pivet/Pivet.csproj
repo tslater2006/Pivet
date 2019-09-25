@@ -4,10 +4,10 @@
     <OutputType>Exe</OutputType>
     <TargetFrameworks>netcoreapp2.2</TargetFrameworks>
     <RuntimeFrameworkVersion>2.2.7</RuntimeFrameworkVersion>
-    <RuntimeIdentifiers>win10-x64;osx-x64;linux-x64</RuntimeIdentifiers>
+    <RuntimeIdentifiers>win10-x64;linux-x64</RuntimeIdentifiers>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|netcoreapp2.0|AnyCPU'">
+  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|netcoreapp2.2|AnyCPU'">
     <PlatformTarget>x64</PlatformTarget>
     <DefineConstants>TRACE;DEBUG;NETCOREAPP;NETCOREAPP2_2</DefineConstants>
   </PropertyGroup>
@@ -17,7 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="LibGit2Sharp" Version="0.25.0-preview-0073" />
+    <PackageReference Include="LibGit2Sharp" Version="0.27.0-preview-0020" />
     <PackageReference Include="Newtonsoft.Json" Version="11.0.1" />
     <PackageReference Include="Oracle.ManagedDataAccess.Core" Version="2.19.31" />
     <PackageReference Include="Portable.BouncyCastle" Version="1.8.1.4" />
