@@ -207,7 +207,11 @@ namespace Pivet.Data
 
                 Logger.Write($"Processing top level rows for {_item.Record}");
 
-                var likeString = $"{_item.FilterField} LIKE '" + string.Join($"%' OR {_item.FilterField} LIKE '", _prefixes) + "%'";
+                string likeString = "";
+                if (_item.FilterField.Length > 0)
+                {
+                    likeString = $"WHERE {_item.FilterField} LIKE '" + string.Join($"%' OR {_item.FilterField} LIKE '", _prefixes) + "%'";
+                }
 
                 /* get the actual table name */
                 var topTableName = "";
@@ -220,7 +224,7 @@ namespace Pivet.Data
                     }
                 }
 
-                using (OracleCommand topLevelRows = new OracleCommand($"SELECT * FROM {topTableName} WHERE {likeString} ", _conn))
+                using (OracleCommand topLevelRows = new OracleCommand($"SELECT * FROM {topTableName} {likeString} ", _conn))
                 {
                     using (var reader = topLevelRows.ExecuteReader())
                     {
