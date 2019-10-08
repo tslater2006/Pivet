@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Oracle.ManagedDataAccess.Client;
 using System.IO;
+using BasicSQLFormatter;
 
 namespace Pivet.Data.Processors
 {
@@ -185,7 +186,11 @@ namespace Pivet.Data.Processors
                 var fileName = GetFilePathForSQL(rootFolder, item.SQLID, item.SqlType);
                 Directory.CreateDirectory(new FileInfo(fileName).Directory.FullName);
 
-                 File.WriteAllText(fileName, item.GetContents(_conn));
+                var sqlText = item.GetContents(_conn);
+
+                var formattedText = new SQLFormatter(sqlText).Format();
+
+                File.WriteAllText(fileName, formattedText);
 
                 changedItems.Add(new ChangedItem(fileName, item.Oprid));
 
