@@ -44,6 +44,11 @@ namespace Pivet
             var passwordEncryptMode = false;
             ShowProgress = false;
 
+            if (args.Contains("-e"))
+            {
+                passwordEncryptMode = true;
+            }
+
             if (args.Length > 1)
             {
                 for (var x = 0; x < args.Length - 1; x++)
@@ -72,7 +77,8 @@ namespace Pivet
                         x++;
                     }
                 }
-            } else if (args.Length == 1)
+            }
+            else if (args.Length == 1)
             {
                 if (args[0].ToLower().Equals("-b"))
                 {
@@ -81,10 +87,6 @@ namespace Pivet
                 if (args[0].ToLower().Equals("-v"))
                 {
                     ShowProgress = true;
-                }
-                if (args[0].ToLower().Equals("-e"))
-                {
-                    passwordEncryptMode = true;
                 }
             }
 
