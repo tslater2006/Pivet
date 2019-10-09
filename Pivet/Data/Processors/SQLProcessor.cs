@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -183,7 +183,7 @@ namespace Pivet.Data.Processors
             }
             foreach (var item in _items)
             {
-                var fileName = GetFilePathForSQL(rootFolder, item.SQLID, item.SqlType);
+                var fileName = GetFilePathForSQL(rootFolder, item.SQLID, item.SqlType).CleanFilePath();
                 Directory.CreateDirectory(new FileInfo(fileName).Directory.FullName);
 
                 var sqlText = item.GetContents(_conn);
