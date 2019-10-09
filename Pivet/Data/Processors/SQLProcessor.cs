@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -125,7 +125,7 @@ namespace Pivet.Data.Processors
 
         private string GetFilePathForSQL(string rootFolder, string sqlid, string sqltype)
         {
-            var sqlRoot = Path.Combine(rootFolder, "SQL Objects");
+            var sqlRoot = Path.Combine(rootFolder, sqltype.Equals("6") ? "App Engine XSLT" :"SQL Objects");
             var path = "";
             switch (sqltype)
             {
@@ -142,7 +142,7 @@ namespace Pivet.Data.Processors
                     path = Path.Combine(sqlRoot, "Audits", sqlid + ".sql");
                     break;
                 case "6":
-                    path = Path.Combine(sqlRoot, "App Engine XML", sqlid + ".sql");
+                    path = Path.Combine(sqlRoot, sqlid + ".xslt");
                     break;
                 default:
                     path = Path.Combine(sqlRoot, "Type " + sqltype, sqlid + ".sql");
