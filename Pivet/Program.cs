@@ -92,8 +92,24 @@ namespace Pivet
 
             if (passwordEncryptMode)
             {
-                Console.Write("Enter the password you want to encrypt: ");
-                string pass = ReadPassword('*');
+                bool passwordMatch = false;
+                string pass = "";
+                while (passwordMatch == false)
+                {
+                    Console.Write("Enter the password you want to encrypt: ");
+                    pass = ReadPassword('*');
+                    Console.Write("Please confirm the password: ");
+                    string passConfirm = ReadPassword('*');
+
+                    if (pass.Equals(passConfirm))
+                    {
+                        passwordMatch = true;
+                    } else
+                    {
+                        Console.WriteLine("Passwords did not match. Please try again.");
+                    }
+                }
+
                 Console.WriteLine("Encrypted: " + PasswordCrypto.EncryptPassword(pass));
                 return;
             }
