@@ -187,10 +187,16 @@ namespace Pivet.Data.Processors
                 Directory.CreateDirectory(new FileInfo(fileName).Directory.FullName);
 
                 var sqlText = item.GetContents(_conn);
+                try
+                {
+                    var formattedText = new SQLFormatter(sqlText).Format();
 
-                var formattedText = new SQLFormatter(sqlText).Format();
-
-                File.WriteAllText(fileName, formattedText);
+                    File.WriteAllText(fileName, formattedText);
+                }catch(Exception ex)
+                {
+                    Console.WriteLine("SQL Processor: Failed to format SQL: " + item.SQLID);
+                    File.WriteAllText(fileName, sqlText);
+                }
 
                 changedItems.Add(new ChangedItem(fileName, item.Oprid));
 
