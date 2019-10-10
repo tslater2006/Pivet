@@ -194,7 +194,6 @@ namespace Pivet.Data.Processors
                     File.WriteAllText(fileName, formattedText);
                 }catch(Exception ex)
                 {
-                    Console.WriteLine("SQL Processor: Failed to format SQL: " + item.SQLID);
                     File.WriteAllText(fileName, sqlText);
                 }
 
