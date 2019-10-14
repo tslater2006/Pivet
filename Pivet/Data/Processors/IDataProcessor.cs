@@ -18,8 +18,8 @@ namespace Pivet.Data
     }
     public static class FilenameUtils
     {
-        static Regex removeInvalidChars = new Regex(String.Format("[{0}]", Regex.Escape(new string(Path.GetInvalidFileNameChars().Except(new char[] { '/', '\\' }).ToArray()))), RegexOptions.Singleline | RegexOptions.Compiled | RegexOptions.CultureInvariant);
-        public static string CleanFilePath(this string s)
+        static Regex removeInvalidChars = new Regex(String.Format("[{0}]", Regex.Escape(new string(Path.GetInvalidFileNameChars()))), RegexOptions.Singleline | RegexOptions.Compiled | RegexOptions.CultureInvariant);
+        public static string CleanFileName(this string s)
         {
             s = removeInvalidChars.Replace(s, "");
             return s;
