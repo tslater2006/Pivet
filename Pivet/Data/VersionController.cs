@@ -37,9 +37,17 @@ namespace Pivet.Data
                 {
                     Logger.Write("Repository URL is set, cloning repo to disk.");
                     /* repository is configured with a remote, try cloning from there */
-                    var co = new CloneOptions();
-                    co.CredentialsProvider = (_url, _user, _cred) => new UsernamePasswordCredentials { Username = config.User, Password = config.Password };
-                    var result = Repository.Clone(config.Url, _repoBase, co);
+                    try
+                    {
+                        var co = new CloneOptions();
+                        co.CredentialsProvider = (_url, _user, _cred) => new UsernamePasswordCredentials { Username = config.User, Password = config.Password };
+                        var result = Repository.Clone(config.Url, _repoBase, co);
+                    } catch (Exception ex)
+                    {
+                        /* Cloning failed, maybe it doesn't exist at the remote yet. Gitlab lets you push to a non-existant repo to create it, so we should continue */
+                        Logger.Write("Failed to clone repo, creating new repository.");
+                        Repository.Init(_repoBase);
+                    }
                 }
                 else
                 {
