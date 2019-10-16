@@ -87,6 +87,38 @@ namespace Pivet.Data.Processors
                                 while (dataReader.Read())
                                 {
                                     newCref.Data = RawDataProcessor.DataItemFromReader(dataTable, dataReader);
+
+                                    /* read in CREF attributes */
+                                    /* PSPRSMATTRVAL */
+                                    RawDataRelatedTable attrs = new RawDataRelatedTable();
+                                    attrs.TableName = "PSPRSMATTRVAL";
+                                    newCref.Data.RelatedTables.Add(attrs);
+
+                                    using (OracleCommand crefAttrSQL = new OracleCommand($"SELECT * FROM PSPRSMATTRVAL WHERE PORTAL_OBJNAME = :1 and PORTAL_NAME = :2",_conn))
+                                    {
+                                        crefID = new OracleParameter();
+                                        crefID.OracleDbType = OracleDbType.Varchar2;
+                                        crefID.Value = newCref.ID;
+                                        crefAttrSQL.Parameters.Add(crefID);
+
+                                        portalName = new OracleParameter();
+                                        portalName.OracleDbType = OracleDbType.Varchar2;
+                                        portalName.Value = newCref.Portal;
+                                        crefAttrSQL.Parameters.Add(portalName);
+
+
+                                        using (var attrReader = crefAttrSQL.ExecuteReader())
+                                        {
+                                            var attrDataTable = attrReader.GetSchemaTable();
+                                            while (attrReader.Read())
+                                            {
+                                                attrs.Rows.Add(RawDataProcessor.DataItemFromReader(attrDataTable, attrReader));
+                                            }
+                                        }
+
+                                    }
+                                    
+                                    
                                 }
                             }
                         }
@@ -119,7 +151,7 @@ namespace Pivet.Data.Processors
             foreach (ContentReference cref in SelectedCREFs)
             {
                 /* get relative path */
-                var crefPath = string.Join(Path.DirectorySeparatorChar, cref.Path.Split(" -> ").Skip(1).ToArray());
+                                    var crefPath = string.Join(Path.DirectorySeparatorChar, cref.Path.Split(" -> ").Skip(1).ToArray());
                 crefPath += ".cref";
 
 
