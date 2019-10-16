@@ -307,7 +307,7 @@ namespace Pivet.Data
 
         }
 
-        public RawDataItem DataItemFromReader(DataTable dataTable, OracleDataReader reader)
+        public static RawDataItem DataItemFromReader(DataTable dataTable, OracleDataReader reader)
         {
             RawDataItem item = new RawDataItem();
 
@@ -329,6 +329,11 @@ namespace Pivet.Data
     {
         public Dictionary<string, object> Fields = new Dictionary<string, object>();
         public List<RawDataRelatedTable> RelatedTables = new List<RawDataRelatedTable>();
+
+        public bool ShouldSerializeRelatedTables()
+        {
+            return RelatedTables.Count > 0;
+        }
 
         public override int GetHashCode()
         {
