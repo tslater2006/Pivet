@@ -76,6 +76,19 @@ namespace Pivet.Data
                 }
             }
 
+            /* confirm .gitignore is present */
+            var gitAttrFile = Path.Join(_repoBase, ".gitattributes");
+            if (File.Exists(gitAttrFile) == false)
+            {
+                Logger.Write("Repository does not have a gitattributes present. Adding...");
+                File.WriteAllText(gitAttrFile, "* text eol=crlf");
+                Commands.Stage(_repository, gitAttrFile);
+
+                Signature author = new Signature("PIVET", "PIVET", DateTime.Now);
+                Signature committer = author;
+                Commit commit = _repository.Commit("Added gitattributes for consistent line endings", author, committer);
+            }
+
         }
 
         private void ReportProgress(double progress)
