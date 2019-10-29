@@ -18,8 +18,6 @@ If(!(test-path ".\build"))
 $commit= &git rev-parse HEAD 
 $hash = $commit.Substring(0,7)
 
-Get-ChildItem -Recurse -Path .\Pivet\bin\Release\netcoreapp3.0\publish\ *.pdb | foreach {Remove-Item -Path $_.FullName}
-
 Compress-Archive -Force -Path .\Pivet\bin\Release\netcoreapp3.0\publish\linux\* -DestinationPath ".\build\linux-$($hash).zip"
 Compress-Archive -Force -Path .\Pivet\bin\Release\netcoreapp3.0\publish\windows\* -DestinationPath ".\build\windows-$($hash).zip"
 Compress-Archive -Force -Path .\Pivet\bin\Release\netcoreapp3.0\publish\rhel\* -DestinationPath ".\build\redhat-$($hash).zip"
