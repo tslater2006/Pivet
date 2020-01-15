@@ -7,6 +7,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security;
+using System.Threading.Tasks;
 
 namespace Pivet
 {    class Program
@@ -153,7 +154,10 @@ namespace Pivet
             }
 
             Logger.Write($"Config loaded. {GlobalConfig.Environments.Count} Environment(s) found, {GlobalConfig.Profiles.Count} Profile(s) found.");
-            
+
+
+            List<JobConfig> jobsToRun = new List<JobConfig>();
+
             foreach (var job in GlobalConfig.Jobs)
             {
                 if (jobToRun.Length > 0)
@@ -168,7 +172,8 @@ namespace Pivet
                         }
                         else
                         {
-                            JobRunner.Run(GlobalConfig, job);
+                            jobsToRun.Add(job);
+                            //JobRunner.Run(GlobalConfig, job);
                         }
                     }
                 }
@@ -181,11 +186,26 @@ namespace Pivet
                     }
                     else
                     {
+                        jobsToRun.Add(job);
                         JobRunner.Run(GlobalConfig, job); 
                     }
                 }
 
             }
+
+            Task<Tuple<bool, string>>[] taskList = new Task<Tuple<bool, string>>[jobsToRun.Count];
+
+            for (var x = 0; x < jobsToRun.Count; x++)
+            {
+                taskList[x] = Task<Tuple<bool, string>>.Factory.StartNew(() =>
+                {
+                    Console.WriteLine("Starting job: " + jobsToRun[x].Name);
+                    return JobRunner.Run(GlobalConfig, jobsToRun[x]);
+                });
+            }
+
+            Task<Tuple<bool, string>>.WaitAll(taskList);
+
             Logger.Write("All done!");
 
         }
