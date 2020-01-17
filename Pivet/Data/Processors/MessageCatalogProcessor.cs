@@ -11,7 +11,6 @@ namespace Pivet.Data.Processors
 {
     internal class MessageCatalogProcessor : IDataProcessor
     {
-        List<MessageCatalogItem> selectedItems = new List<MessageCatalogItem>();
         OracleConnection _conn;
 
         public string ItemName => "Message Catalog";
@@ -19,10 +18,19 @@ namespace Pivet.Data.Processors
 
         public event ProgressHandler ProgressChanged;
 
-        public int LoadItems(OracleConnection conn, FilterConfig filters)
+        public int SaveItems(OracleConnection conn, FilterConfig filters, string outputFolder)
         {
             _conn = conn;
 
+            /* Prep output folder */
+            var msgCatPath = Path.Combine(outputFolder, "Message Catalogs");
+            if (Directory.Exists(msgCatPath) == false)
+            {
+                Directory.CreateDirectory(msgCatPath);
+            }
+
+            var savedItemsCount = 0;
+            Dictionary<int, MessageCatalogSet> setMap = new Dictionary<int, MessageCatalogSet>();
             foreach (var msgFilter in filters.MessageCatalogs)
             {
                 var set = msgFilter.Set;
@@ -52,15 +60,33 @@ namespace Pivet.Data.Processors
                             msgCatItem.MessageSeverity = msgSev;
                             msgCatItem.LastUpdate = lastUpd;
 
-                            selectedItems.Add(msgCatItem);
+                            FillLongAndTranslates(msgCatItem);
+
+                            if (setMap.ContainsKey(set) == false)
+                            {
+                                setMap.Add(set, new MessageCatalogSet());
+                            }
+
+                            setMap[set].Messages.Add(msgCatItem);
+
                         }
                     }
+
+                    /* save each message set */
+                    foreach(MessageCatalogSet msgSet in setMap.Values)
+                    {
+                        var jsonText = JsonConvert.SerializeObject(msgSet, Formatting.Indented);
+                        var filePath = Path.Combine(msgCatPath, msgSet.MessageSet + ".json");
+                        File.WriteAllText(filePath, jsonText);
+                        savedItemsCount++;
+                    }
+
                 }
             }
-            return selectedItems.Count;
+            return savedItemsCount;
         }
 
-        public void ProcessDeletes(string rootFolder)
+        public void Cleanup(string rootFolder)
         {
             var msgCatPath = Path.Combine(rootFolder, "Message Catalogs");
 
@@ -76,45 +102,6 @@ namespace Pivet.Data.Processors
             {
                 ProgressChanged(new ProgressEvent() { Progress = progress });
             }
-        }
-
-        public List<ChangedItem> SaveToDisk(string rootFolder)
-        {
-            List<ChangedItem> changedItems = new List<ChangedItem>();
-
-            var msgCatPath = Path.Combine(rootFolder, "Message Catalogs");
-            if (Directory.Exists(msgCatPath) == false)
-            {
-                Directory.CreateDirectory(msgCatPath);
-            }
-            double total = selectedItems.Count;
-            double current = 0;
-            if (total == 0)
-            {
-                ReportProgress(100);
-            }
-            var setGroups = selectedItems.GroupBy(s => s.MessageSet);
-
-            foreach (var set in setGroups)
-            {
-                var msgSet = new MessageCatalogSet();
-                msgSet.MessageSet = set.Key;
-
-                foreach (var item in set)
-                {
-                    FillLongAndTranslates(item);
-                    msgSet.Messages.Add(item);
-                    current++;
-                    ReportProgress(((int)(((current / total) * 10000))/(double)100));
-                }
-
-                var jsonText = JsonConvert.SerializeObject(msgSet, Formatting.Indented);
-                var filePath = Path.Combine(msgCatPath, set.Key + ".json");
-                File.WriteAllText(filePath, jsonText);
-
-                changedItems.Add(new ChangedItem(filePath, "MessageCats"));
-            }
-            return changedItems;
         }
 
         private void FillLongAndTranslates(MessageCatalogItem item)
