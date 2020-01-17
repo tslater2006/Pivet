@@ -28,9 +28,8 @@ namespace Pivet.Data
     public interface IDataProcessor
     {
         //int LoadItems(OracleConnection conn, FilterConfig filters, int modifyThreshold, VersionState versionState);
-        int LoadItems(OracleConnection conn, FilterConfig filters);
-        void ProcessDeletes(string rootFolder);
-        List<ChangedItem> SaveToDisk(string rootFolder);
+        int SaveItems(OracleConnection conn, FilterConfig filters, string outputFolder);
+        void Cleanup(string rootFolder);
 
         event ProgressHandler ProgressChanged;
         

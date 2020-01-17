@@ -13,12 +13,12 @@ namespace SamplePlugin
 
         public event ProgressHandler ProgressChanged;
 
-        public int LoadItems(OracleConnection conn, FilterConfig filters)
+        public int SaveItems(OracleConnection conn, FilterConfig filters, string outputFolder)
         {
             throw new NotImplementedException();
         }
 
-        public void ProcessDeletes(string rootFolder)
+        public void Cleanup(string rootFolder)
         {
             throw new NotImplementedException();
         }

@@ -82,37 +82,25 @@ namespace Pivet.Data
                         processor.ProgressChanged += Processor_ProgressChanged;
                     }
                     Processors.Add(processor);
-                    //int itemCount = processor.LoadItems(_conn, config.Filters, config.ModifyThreshold,versionState);
-                    int itemCount = processor.LoadItems(_conn, profile.Filters);
-                    Logger.Write("Found " + itemCount + " " + provider + " Definitions");
                 }
             }
-
-            Logger.Write("Definitions collected.");
-
-            Logger.Write("Cleaning working directory.");
-            foreach(var p in Processors)
-            {
-                p.ProcessDeletes(job.OutputFolder);
-            }
-            
             Logger.Write("Processing items.");
             Stopwatch sw2 = new Stopwatch();
             sw2.Start();
-            List<ChangedItem> changedItems = new List<ChangedItem>();
+
             foreach (var p in Processors)
             {
-                Logger.Write($"Saving {p.ItemName} Definitions..." );
-                Logger.Write(Environment.NewLine);
-                changedItems.AddRange(p.SaveToDisk(job.OutputFolder));
-                Console.CursorLeft = 0;
-                Processor_ProgressChanged(new ProgressEvent() { Progress = 100 });
+                Logger.Write("Starting processor for: " + p.ItemName);
+                p.Cleanup(job.OutputFolder);
+                int itemCount = p.SaveItems(_conn, profile.Filters, job.OutputFolder);
+                Logger.Write("Saved " + itemCount + " definitions.");
             }
+            
             sw2.Stop();
             
             Logger.Write("Definitions saved to disk in: " + sw2.Elapsed.TotalSeconds + " seconds");
 
-            versionController.ProcessChanges(changedItems);
+            versionController.ProcessChanges();
             sw.Stop();
             Logger.Write("Environment processed in: " + sw.Elapsed.TotalSeconds + " seconds");
             return new Tuple<bool, string>(true, "");
