@@ -102,8 +102,8 @@ namespace Pivet.Data
             List<ChangedItem> changedItems = new List<ChangedItem>();
             foreach (var p in Processors)
             {
-                Console.WriteLine($"Saving {p.ItemName} Definitions..." );
-                Console.WriteLine();
+                Logger.Write($"Saving {p.ItemName} Definitions..." );
+                Logger.Write(Environment.NewLine);
                 changedItems.AddRange(p.SaveToDisk(job.OutputFolder));
                 Console.CursorLeft = 0;
                 Processor_ProgressChanged(new ProgressEvent() { Progress = 100 });
@@ -125,7 +125,7 @@ namespace Pivet.Data
                 Console.CursorLeft = 0;
                 Console.CursorTop--;
 
-                Console.WriteLine("Progress: " + string.Format("{0:N2}%", evt.Progress));
+                Logger.Write("Progress: " + string.Format("{0:N2}%", evt.Progress));
                 lastProgress = evt.Progress;
             }
 
