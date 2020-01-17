@@ -11,7 +11,6 @@ namespace Pivet.Data.Processors
     internal class HTMLProcessor : IDataProcessor
     {
         private OracleConnection _conn;
-        private List<HTMLItem> _items = new List<HTMLItem>();
 
         public string ItemName => "HTML";
 
@@ -19,13 +18,17 @@ namespace Pivet.Data.Processors
 
         public event ProgressHandler ProgressChanged;
 
-        //public int LoadItems(OracleConnection conn, FilterConfig filters, int modifyThreshold, VersionState versionState)
-        public int LoadItems(OracleConnection conn, FilterConfig filters)
+        public int SaveItems(OracleConnection conn, FilterConfig filters, string outputFolder)
         {
-            //TODO: Store version and load last checked version
             _conn = conn;
-            /* should we go by projects? */
-            using (var itemLoad = new OracleCommand()) 
+
+            /* Prep working directory for processor */
+            ReportProgress(0);
+            var htmlRoot = Path.Combine(outputFolder, "HTML Objects");
+            Directory.CreateDirectory(htmlRoot);
+            var savedItemCount = 0;
+            /* Determine SQL to load definitions */
+            using (var itemLoad = new OracleCommand())
             {
                 itemLoad.Connection = _conn;
                 StringBuilder sb = new StringBuilder();
@@ -46,22 +49,53 @@ namespace Pivet.Data.Processors
                 }
                 else
                 {
-                    //itemLoad.CommandText = "SELECT CONTNAME, LASTUPDOPRID FROM PSCONTDEFN WHERE CONTTYPE = 4 AND VERSION > :1 AND VERSION <= :2 AND LASTUPDDTTM < SYSDATE - :3/(24*60)";
                     itemLoad.CommandText = "SELECT CONTNAME, LASTUPDOPRID FROM PSCONTDEFN WHERE CONTTYPE = 4";
                 }
-
                 using (var reader = itemLoad.ExecuteReader())
                 {
                     while (reader.Read())
                     {
-                        _items.Add(new HTMLItem() { HtmlName = reader.GetString(0), Oprid = reader.GetString(1) });
+                        var htmlName = reader.GetString(0);
+                        var oprid = reader.GetString(1);
+                        if (ApplyFilters(filters, htmlName,oprid))
+                        {
+                            /* save it to disk */
+                            savedItemCount++;
+
+                            var fileName = GetFilePathForHTML(outputFolder, reader.GetString(0));
+
+
+                            using (MemoryStream data = new MemoryStream())
+                            {
+                                using (var cmd = new OracleCommand("SELECT CONTDATA FROM PSCONTENT WHERE CONTTYPE = 4 AND CONTNAME = :1 order by SEQNUM ASC", conn))
+                                {
+                                    OracleParameter contName = new OracleParameter();
+                                    contName.OracleDbType = OracleDbType.Varchar2;
+                                    contName.Value = htmlName;
+
+                                    cmd.Parameters.Add(contName);
+                                    using (var dataReader = cmd.ExecuteReader())
+                                    {
+                                        while (dataReader.Read())
+                                        {
+                                            var blob = dataReader.GetOracleBlob(0);
+                                            blob.CopyTo(data);
+                                            blob.Close();
+                                        }
+                                    }
+                                }
+
+                                var htmlText = Encoding.Unicode.GetString(data.ToArray()).Replace('\0', ' ').Trim();
+                                File.WriteAllText(fileName, htmlText);
+                            }
+
+                        }
                     }
                 }
             }
-            ApplyFilters(filters);
-            return _items.Count;
+            return savedItemCount;
         }
-        
+
         private void ReportProgress(double progress)
         {
             if (ProgressChanged != null)
@@ -69,33 +103,8 @@ namespace Pivet.Data.Processors
                 ProgressChanged(new ProgressEvent() { Progress = progress });
             }
         }
-        public List<ChangedItem> SaveToDisk(string rootFolder)
-        {
-            
-            ReportProgress(0);
-            var htmlRoot = Path.Combine(rootFolder, "HTML Objects");
-            Directory.CreateDirectory(htmlRoot);
-            List<ChangedItem> changedItems = new List<ChangedItem>();
-            double total = _items.Count;
-            double current = 0;
-            if (total == 0)
-            {
-                ReportProgress(100);
-            }
-            foreach (var item in _items)
-            {
-                var fileName = GetFilePathForHTML(rootFolder, item.HtmlName);
 
-                File.WriteAllText(fileName,item.GetContents(_conn));
-                changedItems.Add(new ChangedItem(fileName, item.Oprid));
-                current++;
-                ReportProgress(((int)(((current / total) * 10000))/(double)100));
-
-            }
-            return changedItems;
-        }
-
-        public void ProcessDeletes(string rootFolder)
+        public void Cleanup(string rootFolder)
         {
             var msgCatPath = Path.Combine(rootFolder, "HTML Objects");
 
@@ -111,86 +120,50 @@ namespace Pivet.Data.Processors
             return Path.Combine(htmlRoot, htmlName + ".html");
         }
 
-        private void ApplyFilters(FilterConfig filters)
+        private bool ApplyFilters(FilterConfig filters, string htmlName, string oprid)
         {
             /* project filter is handled by load on HTML Objects */
-
-            for (var x = _items.Count-1; x>= 0; x--)
+            var shouldDiscard = true;
+            if (filters.Prefixes == null || filters.Prefixes.Count == 0)
             {
-                var shouldDiscard = true;
+                shouldDiscard = false;
+            }
+            else
+            {
+                foreach (var prfx in filters.Prefixes)
+                {
+                    if (htmlName.StartsWith(prfx))
+                    {
+                        shouldDiscard = false;
+                        break;
+                    }
+                }
+            }
 
-                if (filters.Prefixes == null || filters.Prefixes.Count == 0)
+            if (!shouldDiscard && filters.IncludeOprids != null && filters.IncludeOprids.Count > 0)
+            {
+                if (filters.IncludeOprids.Contains(oprid))
                 {
                     shouldDiscard = false;
-                } else
-                {
-                    foreach (var prfx in filters.Prefixes)
-                    {
-                        if (_items[x].HtmlName.StartsWith(prfx))
-                        {
-                            shouldDiscard = false;
-                            break;
-                        }
-                    }
                 }
-
-                if (!shouldDiscard && filters.IncludeOprids != null && filters.IncludeOprids.Count > 0)
+                else
                 {
-                    if (filters.IncludeOprids.Contains(_items[x].Oprid))
-                    {
-                        shouldDiscard = false;
-                    } else
-                    {
-                        shouldDiscard = true;
-                    }
-                }
-
-                if (!shouldDiscard && filters.ExcludeOprids != null && filters.ExcludeOprids.Count > 0)
-                {
-                    if (filters.ExcludeOprids.Contains(_items[x].Oprid))
-                    {
-                        shouldDiscard = true;
-                    } else
-                    {
-                        shouldDiscard = false;
-                    }
-                }
-
-                if (shouldDiscard)
-                {
-                    _items.RemoveAt(x);
+                    shouldDiscard = true;
                 }
             }
-        }
-    }
 
-    class HTMLItem
-    {
-        internal string HtmlName;
-        internal string Oprid;
-
-        internal string GetContents(OracleConnection conn)
-        {
-            MemoryStream data = new MemoryStream();
-            using (var cmd = new OracleCommand("SELECT CONTDATA FROM PSCONTENT WHERE CONTTYPE = 4 AND CONTNAME = :1 order by SEQNUM ASC",conn))
+            if (!shouldDiscard && filters.ExcludeOprids != null && filters.ExcludeOprids.Count > 0)
             {
-                OracleParameter contName = new OracleParameter();
-                contName.OracleDbType = OracleDbType.Varchar2;
-                contName.Value = HtmlName;
-
-                cmd.Parameters.Add(contName);
-                using (var reader = cmd.ExecuteReader())
+                if (filters.ExcludeOprids.Contains(oprid))
                 {
-                    while (reader.Read())
-                    {
-                        var blob = reader.GetOracleBlob(0);
-                        blob.CopyTo(data);
-                        blob.Close();
-                    }
+                    shouldDiscard = true;
+                }
+                else
+                {
+                    shouldDiscard = false;
                 }
             }
-
-            return Encoding.Unicode.GetString(data.ToArray()).Replace('\0', ' ').Trim(); ;
+            return !shouldDiscard;
         }
     }
 }
