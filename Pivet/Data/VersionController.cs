@@ -100,7 +100,7 @@ namespace Pivet.Data
                     Console.CursorLeft = 0;
                     Console.CursorTop--;
 
-                    Console.WriteLine("Progress: " + string.Format("{0:N2}%", progress));
+                    Logger.Write("Progress: " + string.Format("{0:N2}%", progress));
                     lastProgress = progress;
                 }
             }

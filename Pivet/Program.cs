@@ -2,11 +2,13 @@
 using Pivet.Data;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Pivet
@@ -43,6 +45,7 @@ namespace Pivet
             var jobToRun = "";
             var wantsBuilder = false;
             var passwordEncryptMode = false;
+            var degreeOfParallel = 1;
             ShowProgress = false;
 
             if (args.Contains("-e"))
@@ -75,6 +78,11 @@ namespace Pivet
                     if (args[x].ToLower().Equals("-m"))
                     {
                         CustomCommitMessage = args[x + 1];
+                        x++;
+                    }
+                    if (args[x].ToLower().Equals("-p"))
+                    {
+                        degreeOfParallel = int.Parse(args[x + 1]);
                         x++;
                     }
                 }
@@ -157,7 +165,6 @@ namespace Pivet
 
 
             List<JobConfig> jobsToRun = new List<JobConfig>();
-
             foreach (var job in GlobalConfig.Jobs)
             {
                 if (jobToRun.Length > 0)
@@ -173,7 +180,6 @@ namespace Pivet
                         else
                         {
                             jobsToRun.Add(job);
-                            //JobRunner.Run(GlobalConfig, job);
                         }
                     }
                 }
@@ -187,25 +193,31 @@ namespace Pivet
                     else
                     {
                         jobsToRun.Add(job);
-                        JobRunner.Run(GlobalConfig, job); 
                     }
                 }
 
             }
 
             Task<Tuple<bool, string>>[] taskList = new Task<Tuple<bool, string>>[jobsToRun.Count];
-
-            for (var x = 0; x < jobsToRun.Count; x++)
+            if (jobsToRun.Count > 1 && degreeOfParallel > 1)
             {
-                taskList[x] = Task<Tuple<bool, string>>.Factory.StartNew(() =>
-                {
-                    Console.WriteLine("Starting job: " + jobsToRun[x].Name);
-                    return JobRunner.Run(GlobalConfig, jobsToRun[x]);
-                });
+                /* Suppress logger... */
+                Logger.Quiet = true;
             }
+            Stopwatch sw = new Stopwatch();
+            sw.Start();
 
-            Task<Tuple<bool, string>>.WaitAll(taskList);
+            /* Parallel, 4 at a time */
+            Parallel.ForEach(jobsToRun, new ParallelOptions() { MaxDegreeOfParallelism = degreeOfParallel }, job =>
+            {
+                Console.WriteLine("Starting job: " + job.Name);
+                JobRunner.Run(GlobalConfig, job);
+                Console.WriteLine("Finished job: " + job.Name);
+            });
 
+            sw.Stop();
+            Logger.Quiet = false;
+            Logger.Write("All jobs finished in: " + sw.Elapsed.TotalSeconds + " seconds.");
             Logger.Write("All done!");
 
         }
