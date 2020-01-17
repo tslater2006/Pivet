@@ -106,7 +106,7 @@ namespace Pivet.Data
             }
         }
 
-        internal void ProcessChanges(List<ChangedItem> adds)
+        internal void ProcessChanges()
         {
             Logger.Write("Processing repository changes...");
             Logger.Write("");
@@ -116,39 +116,7 @@ namespace Pivet.Data
             List<string> changedOrNewItems = _repository.RetrieveStatus().Where(p => p.State == FileStatus.ModifiedInWorkdir || p.State == FileStatus.NewInWorkdir).Select(o => o.FilePath).ToList();
             List<string> deletedFiles = _repository.RetrieveStatus().Where(p => p.State == FileStatus.DeletedFromWorkdir || p.State == FileStatus.DeletedFromIndex).Select(o => o.FilePath).ToList();
             double total = 0;
-            if (config.CommitByOprid)
-            {
-                List<ChangedItem> newOrModifiedFiles = new List<ChangedItem>();
-                total = changedOrNewItems.Count;
-
-                foreach (var f in changedOrNewItems)
-                {
-                    newOrModifiedFiles.Add(adds.Where(p => p.RepoPath == f).First());
-                    current++;
-                    ReportProgress(((int)(((current / total) * 10000)) / (double)100));
-                }
-
-                Logger.Write("Processing OPRID groups...");
-                var opridGroups = newOrModifiedFiles.GroupBy(p => p.OperatorId);
-
-                Logger.Write("Processing staged changes...");
-                Logger.Write("");
-                foreach (var opr in opridGroups)
-                {
-                    var staged = opr.Select(o => o.RepoPath).ToList();
-                    Commands.Stage(_repository, staged);
-
-                    if (newOrModifiedFiles.Count > 0)
-                    {
-                        var oprid = opr.Key;
-                        Signature author = new Signature(oprid, oprid, DateTime.Now);
-                        Signature committer = author;
-                        Commit commit = _repository.Commit("Changes made by " + oprid, author, committer);
-                    }
-                }
-            }
-            else //not by oprid
-            {
+            
                 if (changedOrNewItems.Count > 0)
                 {
                     Commands.Stage(_repository, changedOrNewItems);
@@ -161,7 +129,6 @@ namespace Pivet.Data
                     }
                     Commit commit = _repository.Commit(commitString, author, committer);
                 }
-            }
 
             if (deletedFiles.Count > 0)
             {

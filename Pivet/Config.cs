@@ -141,8 +141,8 @@ namespace Pivet
 
     public class RepositoryConfig
     {
-        [JsonProperty(Required = Required.Always)]
-        public bool CommitByOprid = true;
+        /* deprecated */
+        public bool CommitByOprid = false;
 
         [JsonProperty(Required = Required.Always)]
         public string Url = "";
