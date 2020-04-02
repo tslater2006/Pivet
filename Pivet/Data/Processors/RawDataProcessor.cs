@@ -68,8 +68,6 @@ namespace Pivet.Data
                 string outputFolder = _outputPath + Path.DirectorySeparatorChar + _item.Key.Folder;
 
                 Logger.Write($"Saving Table: {_item.Key.Record}");
-
-                Directory.CreateDirectory(outputFolder);
                 
 
                 foreach (RawDataItem item in _item.Value)
