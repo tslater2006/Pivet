@@ -1,14 +1,13 @@
 ﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Pivet.Data;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace Pivet
@@ -42,10 +41,10 @@ namespace Pivet
             CustomCommitMessage = "";
 
             var configFile = "config.json";
+            var externalFile = "vars.json";
             var jobToRun = "";
             var wantsBuilder = false;
             var passwordEncryptMode = false;
-            var degreeOfParallel = 1;
             ShowProgress = false;
 
             if (args.Contains("-e"))
@@ -60,6 +59,11 @@ namespace Pivet
                     if (args[x].ToLower().Equals("-c"))
                     {
                         configFile = args[x + 1];
+                        x++;
+                    }
+                    if (args[x].ToLower().Equals("-vars"))
+                    {
+                        externalFile = args[x + 1];
                         x++;
                     }
                     if (args[x].ToLower().Equals("-j"))
@@ -78,11 +82,6 @@ namespace Pivet
                     if (args[x].ToLower().Equals("-m"))
                     {
                         CustomCommitMessage = args[x + 1];
-                        x++;
-                    }
-                    if (args[x].ToLower().Equals("-p"))
-                    {
-                        degreeOfParallel = int.Parse(args[x + 1]);
                         x++;
                     }
                 }
@@ -151,7 +150,10 @@ namespace Pivet
             string j = File.ReadAllText(configFile);
             try
             {
-                GlobalConfig = JsonConvert.DeserializeObject<Config>(j);
+                var myObj = JObject.Load(new ConfigJsonTextReader(new StringReader(j), externalFile));
+                GlobalConfig = myObj.ToObject<Config>();
+                //GlobalConfig = JsonConvert.DeserializeObject<Config>(j);
+                
             }
             catch (Exception ex)
             {
@@ -165,6 +167,7 @@ namespace Pivet
 
 
             List<JobConfig> jobsToRun = new List<JobConfig>();
+
             foreach (var job in GlobalConfig.Jobs)
             {
                 if (jobToRun.Length > 0)
@@ -180,6 +183,7 @@ namespace Pivet
                         else
                         {
                             jobsToRun.Add(job);
+                            //JobRunner.Run(GlobalConfig, job);
                         }
                     }
                 }
@@ -193,31 +197,25 @@ namespace Pivet
                     else
                     {
                         jobsToRun.Add(job);
+                        JobRunner.Run(GlobalConfig, job); 
                     }
                 }
 
             }
 
             Task<Tuple<bool, string>>[] taskList = new Task<Tuple<bool, string>>[jobsToRun.Count];
-            if (jobsToRun.Count > 1 && degreeOfParallel > 1)
+
+            for (var x = 0; x < jobsToRun.Count; x++)
             {
-                /* Suppress logger... */
-                Logger.Quiet = true;
+                taskList[x] = Task<Tuple<bool, string>>.Factory.StartNew(() =>
+                {
+                    Console.WriteLine("Starting job: " + jobsToRun[x].Name);
+                    return JobRunner.Run(GlobalConfig, jobsToRun[x]);
+                });
             }
-            Stopwatch sw = new Stopwatch();
-            sw.Start();
 
-            /* Parallel, 4 at a time */
-            Parallel.ForEach(jobsToRun, new ParallelOptions() { MaxDegreeOfParallelism = degreeOfParallel }, job =>
-            {
-                Console.WriteLine("Starting job: " + job.Name);
-                JobRunner.Run(GlobalConfig, job);
-                Console.WriteLine("Finished job: " + job.Name);
-            });
+            Task<Tuple<bool, string>>.WaitAll(taskList);
 
-            sw.Stop();
-            Logger.Quiet = false;
-            Logger.Write("All jobs finished in: " + sw.Elapsed.TotalSeconds + " seconds.");
             Logger.Write("All done!");
 
         }
@@ -284,5 +282,51 @@ namespace Pivet
         {
             Console.WriteLine($"[ERR] {str}");
         }
+    }
+
+    internal class ConfigJsonTextReader : JsonTextReader
+    {
+        bool hasExternalVars = false;
+        JObject externalVars;
+        public ConfigJsonTextReader(TextReader reader, string externalVarPath) : base(reader)
+        {
+            if (File.Exists(externalVarPath))
+            {
+                hasExternalVars = true;
+                externalVars = JObject.Load(new JsonTextReader(new StringReader(File.ReadAllText(externalVarPath))));
+            }
+        }
+
+        public override bool Read()
+        {
+            bool success = base.Read();
+
+            if (hasExternalVars == false)
+            {
+                return success;
+            }
+
+            var originalValue = this.Value;
+            if (success && this.TokenType == JsonToken.String)
+            {
+                string curValue = (string)this.Value;
+                if (curValue.StartsWith("%") && curValue.EndsWith("%"))
+                {
+                    /* external value */
+                    /* variable name */
+                    string varName = curValue.Substring(1, curValue.Length - 2);
+                    if (externalVars.ContainsKey(varName))
+                    {
+                        this.SetToken(JsonToken.String, externalVars[varName].ToString());
+                        return success;
+                    } else
+                    {
+                        return success;
+                    }
+                }
+            }
+            return success;
+        }
+        
     }
 }
