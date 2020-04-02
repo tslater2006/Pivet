@@ -182,8 +182,8 @@ namespace Pivet
                         }
                         else
                         {
-                            jobsToRun.Add(job);
-                            //JobRunner.Run(GlobalConfig, job);
+                            //jobsToRun.Add(job);
+                            JobRunner.Run(GlobalConfig, job);
                         }
                     }
                 }
@@ -196,14 +196,14 @@ namespace Pivet
                     }
                     else
                     {
-                        jobsToRun.Add(job);
+                        //jobsToRun.Add(job);
                         JobRunner.Run(GlobalConfig, job); 
                     }
                 }
 
             }
 
-            Task<Tuple<bool, string>>[] taskList = new Task<Tuple<bool, string>>[jobsToRun.Count];
+            /* Task<Tuple<bool, string>>[] taskList = new Task<Tuple<bool, string>>[jobsToRun.Count];
 
             for (var x = 0; x < jobsToRun.Count; x++)
             {
@@ -214,7 +214,7 @@ namespace Pivet
                 });
             }
 
-            Task<Tuple<bool, string>>.WaitAll(taskList);
+            Task<Tuple<bool, string>>.WaitAll(taskList);*/
 
             Logger.Write("All done!");
 
