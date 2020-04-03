@@ -123,7 +123,10 @@ namespace Pivet.Data
             if (lastProgress != evt.Progress)
             {
                 Console.CursorLeft = 0;
-                Console.CursorTop--;
+                if (Console.CursorTop > 0)
+                {
+                    Console.CursorTop--;
+                }
 
                 Logger.Write("Progress: " + string.Format("{0:N2}%", evt.Progress));
                 lastProgress = evt.Progress;

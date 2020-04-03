@@ -98,7 +98,10 @@ namespace Pivet.Data
                 if (lastProgress != progress)
                 {
                     Console.CursorLeft = 0;
-                    Console.CursorTop--;
+                    if (Console.CursorTop > 0)
+                    {
+                        Console.CursorTop--;
+                    }
 
                     Logger.Write("Progress: " + string.Format("{0:N2}%", progress));
                     lastProgress = progress;
@@ -182,7 +185,10 @@ namespace Pivet.Data
                 options.OnPackBuilderProgress = (x, y, z) =>
                 {
                     Console.CursorLeft = 0;
-                    Console.CursorTop--;
+                    if (Console.CursorTop > 0)
+                    {
+                        Console.CursorTop--;
+                    }
                     Logger.Write(x + " (" + y + "/" + z + ")                              ");
                     return true;
                 };
@@ -190,7 +196,10 @@ namespace Pivet.Data
                 options.OnPushTransferProgress = (x, y, z) =>
                 {
                     Console.CursorLeft = 0;
-                    Console.CursorTop--;
+                    if (Console.CursorTop > 0)
+                    {
+                        Console.CursorTop--;
+                    }
                     Logger.Write("Pushing objects (" + x + "/" + y + ")                                 ");
                     return true;
                 };
