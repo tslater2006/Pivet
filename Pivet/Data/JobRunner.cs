@@ -112,10 +112,10 @@ namespace Pivet.Data
             
             Logger.Write("Definitions saved to disk in: " + sw2.Elapsed.TotalSeconds + " seconds");
 
-            versionController.ProcessChanges(changedItems);
+            bool versioningSuccess = versionController.ProcessChanges(changedItems);
             sw.Stop();
             Logger.Write("Environment processed in: " + sw.Elapsed.TotalSeconds + " seconds");
-            return new Tuple<bool, string>(true, "");
+            return new Tuple<bool, string>(versioningSuccess, "");
         }
 
         private static void Processor_ProgressChanged(ProgressEvent evt)

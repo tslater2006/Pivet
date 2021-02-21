@@ -109,7 +109,7 @@ namespace Pivet.Data
             }
         }
 
-        internal void ProcessChanges(List<ChangedItem> adds)
+        internal bool ProcessChanges(List<ChangedItem> adds)
         {
             Logger.Write("Processing repository changes...");
             Logger.Write("");
@@ -215,8 +215,11 @@ namespace Pivet.Data
                 catch (Exception ex)
                 {
                     Logger.Write("Exception occured while pushing to remote: " + ex.ToString());
+                    return false;
                 }
+                return true;
             }
+            return true;
         }
     }
 }
