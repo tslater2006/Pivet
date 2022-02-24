@@ -1,8 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netcoreapp2.2</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
     <RuntimeIdentifiers>win10-x64;osx-x64;linux-x64;rhel-x64</RuntimeIdentifiers>
+    <OutputType>Library</OutputType>
   </PropertyGroup>
 
 
