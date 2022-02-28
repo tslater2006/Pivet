@@ -146,7 +146,7 @@ namespace Pivet.Data
                         var oprid = opr.Key;
                         Signature author = new Signature(oprid, oprid, DateTime.Now);
                         Signature committer = author;
-                        Commit commit = _repository.Commit("Changes made by " + oprid, author, committer);
+                        Commit commit = _repository.Commit("Changes made by " + oprid, author, committer, new CommitOptions() { AllowEmptyCommit = true });
                     }
                 }
             }
@@ -162,7 +162,7 @@ namespace Pivet.Data
                     {
                         commitString = Program.CustomCommitMessage;
                     }
-                    Commit commit = _repository.Commit(commitString, author, committer);
+                    Commit commit = _repository.Commit(commitString, author, committer, new CommitOptions() { AllowEmptyCommit = true });
                 }
             }
 
@@ -171,7 +171,7 @@ namespace Pivet.Data
                 Commands.Stage(_repository, deletedFiles);
                 Signature author = new Signature("SYSTEM", "SYSTEM", DateTime.Now);
                 Signature committer = author;
-                Commit commit = _repository.Commit("Deleted Objects", author, committer);
+                Commit commit = _repository.Commit("Deleted Objects", author, committer, new CommitOptions() { AllowEmptyCommit = true });
             }
 
             /* We have commited all changes, time to push if setup with a URL */
