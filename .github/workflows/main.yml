@@ -1,0 +1,60 @@
+name: Publish
+
+on:
+  release:
+    types: [published]
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v1
+
+      - name: Setup dotnet
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: '6.0.x'
+
+      - name: Build
+        shell: bash
+        run: |
+          tag=$(git describe --tags --abbrev=0)
+          echo "Matrix: ${{ matrix.kind }} ${{ matrix.target }}"
+          echo "Release name: $release_name"
+          echo "Whoami: "
+          whoami
+          mkdir -p build
+          
+          # Build Linux
+          dotnet publish ./Pivet/Pivet.csproj /p:PublishProfile=Linux /p:Configuration=Release -f net6.0 -o "Pivet-$tag-linux-x64"
+          dotnet publish ./Pivet/Pivet.csproj /p:PublishProfile=LinuxSelfContained /p:Configuration=Release -f net6.0 -o "Pivet-$tag-linux-x64-SelfContained"
+          tar czvf "./build/Pivet-$tag-linux-x64.tar.gz" "Pivet-$tag-linux-x64"
+          tar czvf "./build/Pivet-$tag-linux-x64-SelfContained.tar.gz" "Pivet-$tag-linux-x64-SelfContained"
+
+          # Build Windows
+          dotnet publish ./Pivet/Pivet.csproj /p:PublishProfile=Windows /p:Configuration=Release -f net6.0 -o "Pivet-$tag-win-x64"
+          dotnet publish ./Pivet/Pivet.csproj /p:PublishProfile=WindowsSelfContained /p:Configuration=Release -f net6.0 -o "Pivet-$tag-win-x64-SelfContained"
+          zip -r "./build/Pivet-$tag-win-x64.zip" "Pivet-$tag-win-x64"
+          zip -r "./build/Pivet-$tag-win-x64-SelfContained.zip" "Pivet-$tag-win-x64-SelfContained"
+
+          # Build RedHat
+          dotnet publish ./Pivet/Pivet.csproj /p:PublishProfile=RedHat /p:Configuration=Release -f net6.0 -o "Pivet-$tag-rhel-x64"
+          dotnet publish ./Pivet/Pivet.csproj /p:PublishProfile=RedHatSelfContained /p:Configuration=Release -f net6.0 -o "Pivet-$tag-rhel-x64-SelfContained"
+          tar czvf "./build/Pivet-$tag-rhel-x64.tar.gz" "Pivet-$tag-rhel-x64"
+          tar czvf "./build/Pivet-$tag-rhel-x64-SelfContained.tar.gz" "Pivet-$tag-rhel-x64-SelfContained"
+          
+          # Delete output directory
+          rm -r "Pivet-$tag-linux-x64"
+          rm -r "Pivet-$tag-linux-x64-SelfContained"
+          rm -r "Pivet-$tag-win-x64"
+          rm -r "Pivet-$tag-win-x64-SelfContained"
+          rm -r "Pivet-$tag-rhel-x64"
+          rm -r "Pivet-$tag-rhel-x64-SelfContained"
+
+      - name: Publish
+        uses: softprops/action-gh-release@v1
+        with:
+          files: "./build/Pivet*"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
