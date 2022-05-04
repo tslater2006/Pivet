@@ -154,22 +154,104 @@ namespace Pivet.Data
             {
                 if (changedOrNewItems.Count > 0)
                 {
-                    Commands.Stage(_repository, changedOrNewItems);
-                    Signature author = new Signature("PIVET", "PIVET", DateTime.Now);
-                    Signature committer = author;
-                    String commitString = "Changes captured by Pivet";
-                    if (Program.CustomCommitMessage.Length > 0)
+                    if (config.CommitStyle == CommitStyleOptions.SINGLE_COMMIT)
                     {
-                        commitString = Program.CustomCommitMessage;
+                        Commands.Stage(_repository, changedOrNewItems);
+                        Signature author = new Signature("PIVET", "PIVET", DateTime.Now);
+                        Signature committer = author;
+                        String commitString = "Changes captured by Pivet";
+                        if (Program.CustomCommitMessage.Length > 0)
+                        {
+                            commitString = Program.CustomCommitMessage;
+                        }
+                        Commit commit = _repository.Commit(commitString, author, committer, new CommitOptions() { AllowEmptyCommit = true });
                     }
-                    Commit commit = _repository.Commit(commitString, author, committer, new CommitOptions() { AllowEmptyCommit = true });
+                    else if (config.CommitStyle == CommitStyleOptions.PEOPLECODE_SEPARATE)
+                    {
+                        Logger.Write("Starting PeopleCode separate processing.");
+                        List<String> peoplecodeItems = changedOrNewItems.Where(s => s.StartsWith("PeopleCode/")).ToList();
+                        List<String> everythingElse = changedOrNewItems.Where(s => s.StartsWith($"PeopleCode/") == false).ToList();
+                        Logger.Write("Peoplecode items: " + peoplecodeItems.Count);
+                        Logger.Write("Everything else items: " + everythingElse.Count);
+                        Signature author, committer;
+                        String commitString;
+                        Commit commit;
+                        /* Commit PeopleCode changes */
+                        if (peoplecodeItems.Count > 0) {
+                            Commands.Stage(_repository, peoplecodeItems);
+                            author = new Signature("PIVET", "PIVET", DateTime.Now);
+                            committer = author;
+                            commitString = "PeopleCode changes captured by Pivet";
+                            if (Program.CustomCommitMessage.Length > 0)
+                            {
+                                commitString = "[PeopleCode] " + Program.CustomCommitMessage;
+                            }
+                            commit = _repository.Commit(commitString, author, committer, new CommitOptions() { AllowEmptyCommit = true });
+                        }
+                        /* Commit everything else */
+                        if (everythingElse.Count > 0) {
+                            Commands.Stage(_repository, everythingElse);
+                            author = new Signature("PIVET", "PIVET", DateTime.Now);
+                            committer = author;
+                            commitString = "Non-PeopleCode changes captured by Pivet";
+                            if (Program.CustomCommitMessage.Length > 0)
+                            {
+                                commitString = "[Non-PeopleCode] " + Program.CustomCommitMessage;
+                            }
+                            commit = _repository.Commit(commitString, author, committer, new CommitOptions() { AllowEmptyCommit = true });
+                        }
+                    }
+                    else if (config.CommitStyle == CommitStyleOptions.TOP_LEVEL_SEPARATE)
+                    {
+                        Logger.Write("Processing Top Level Separate Commit Style");
+                        Signature author;
+                        Signature committer;
+                        string commitString;
+                        Commit commit;
+                        var topLevelFolders = Directory.EnumerateDirectories(_repoBase).Select(d => d.Split(Path.DirectorySeparatorChar).Last()).ToList();
+                        foreach (var topLevelFolder in topLevelFolders)
+                        {
+                            /* do not process the .git folder */
+                            if (topLevelFolder.Equals(".git")) {
+                                continue;
+                            }
+                            Logger.Write($"Processing Top Level: {topLevelFolder}");
+                            var topItems = changedOrNewItems.Where(s => s.StartsWith($"{topLevelFolder}/")).ToList();
+                            Logger.Write($"  Item Count: {topItems.Count}");
+                            if (topItems.Count > 0) {
+                                Commands.Stage(_repository, topItems);
+                                author = new Signature("PIVET", "PIVET", DateTime.Now);
+                                committer = author;
+                                commitString = $"{topLevelFolder} changes captured by Pivet";
+                                if (Program.CustomCommitMessage.Length > 0)
+                                {
+                                    commitString = $"[{topLevelFolder}] " + Program.CustomCommitMessage;
+                                }
+                                commit = _repository.Commit(commitString, author, committer, new CommitOptions() { AllowEmptyCommit = true });
+                            }
+                        }
+
+                        /* Get updated repo status to capture any top level items that need to be commited */
+                        changedOrNewItems = _repository.RetrieveStatus().Where(p => p.State == FileStatus.ModifiedInWorkdir || p.State == FileStatus.NewInWorkdir).Select(o => o.FilePath).ToList();
+                        if (changedOrNewItems.Count > 0) {
+                            Commands.Stage(_repository, changedOrNewItems);
+                            author = new Signature("PIVET", "PIVET", DateTime.Now);
+                            committer = author;
+                            commitString = "[Top level] Changes captured by Pivet";
+                            if (Program.CustomCommitMessage.Length > 0)
+                            {
+                                commitString = Program.CustomCommitMessage;
+                            }
+                            commit = _repository.Commit(commitString, author, committer, new CommitOptions() { AllowEmptyCommit = true });
+                        }
+                    }
                 }
             }
 
             if (deletedFiles.Count > 0)
             {
                 Commands.Stage(_repository, deletedFiles);
-                Signature author = new Signature("SYSTEM", "SYSTEM", DateTime.Now);
+                Signature author = new Signature("PIVET", "PIVET", DateTime.Now);
                 Signature committer = author;
                 Commit commit = _repository.Commit("Deleted Objects", author, committer, new CommitOptions() { AllowEmptyCommit = true });
             }

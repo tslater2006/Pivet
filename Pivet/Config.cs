@@ -7,6 +7,7 @@ using Org.BouncyCastle.Crypto.Parameters;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Runtime.Serialization;
 
 namespace Pivet
 {
@@ -139,6 +140,17 @@ namespace Pivet
         public List<RawDataEntry> RawData = new List<RawDataEntry>();
     }
 
+    [JsonConverter(typeof(StringEnumConverter))]
+    public enum CommitStyleOptions
+    {
+        [EnumMember(Value="SingleCommit")]
+        SINGLE_COMMIT, 
+        [EnumMember(Value="PeopleCodeSeparate")]
+        PEOPLECODE_SEPARATE, 
+        [EnumMember(Value="TopLevelSeparate")]
+        TOP_LEVEL_SEPARATE
+    }
+
     public class RepositoryConfig
     {
         [JsonProperty(Required = Required.Always)]
@@ -150,6 +162,10 @@ namespace Pivet
         public string User = "";
         [JsonProperty(Required = Required.Always)]
         public string EncryptedPassword = "";
+
+        [JsonProperty]
+        public CommitStyleOptions CommitStyle = CommitStyleOptions.SINGLE_COMMIT;
+
         [JsonIgnore]
         public string Password
         {
