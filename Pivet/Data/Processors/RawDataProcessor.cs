@@ -208,7 +208,7 @@ namespace Pivet.Data
                 string likeString = "";
                 if (_item.FilterField.Length > 0)
                 {
-                    likeString = $"WHERE {_item.FilterField} LIKE '" + string.Join($"%' OR {_item.FilterField} LIKE '", _prefixes) + "%'";
+                    likeString = $"WHERE ({_item.FilterField} LIKE '" + string.Join($"%' OR {_item.FilterField} LIKE '", _prefixes) + "%')";
                 }
 
                 /* get the actual table name */
@@ -222,6 +222,16 @@ namespace Pivet.Data
                     }
                 }
 
+                if (_item.ExtraCriteria != null)
+                {
+                    if (likeString.Length > 0) {
+                        likeString += $" AND {_item.ExtraCriteria}";
+                    } else
+                    {
+                        likeString = $" WHERE {_item.ExtraCriteria}";
+                    }
+                }
+                
                 using (OracleCommand topLevelRows = new OracleCommand($"SELECT * FROM {topTableName} {likeString} ", _conn))
                 {
                     using (var reader = topLevelRows.ExecuteReader())

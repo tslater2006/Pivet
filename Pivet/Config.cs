@@ -94,6 +94,8 @@ namespace Pivet
         [JsonProperty(Required = Required.Always)]
         public bool IncludeRelated = false;
 
+        public string ExtraCriteria = null;
+
         [JsonProperty(Required = Required.Default)]
         public List<string> RelatedBlacklist = new List<string>();
         public override string ToString()
