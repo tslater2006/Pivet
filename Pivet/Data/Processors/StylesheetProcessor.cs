@@ -29,7 +29,7 @@ namespace Pivet.Data.Processors
                 StringBuilder sb = new StringBuilder();
                 if (filters.Projects != null && filters.Projects.Count > 0)
                 {
-                    sb.Append("select B.STYLESHEETNAME, B.LASTUPDOPRID from PSPROJECTITEM A, PSSTYLSHEETDEFN B where A.OBJECTTYPE = 50 AND A.OBJECTVALUE1 = B.STYLESHEETNAME AND A.PROJECTNAME IN (");
+                    sb.Append("select B.STYLESHEETNAME, B.LASTUPDOPRID from PSPROJECTITEM A, PSSTYLSHEETDEFN B where A.OBJECTTYPE = 50 AND A.OBJECTVALUE1 = B.STYLESHEETNAME AND B.STYLESHEETTYPE = 2 AND A.PROJECTNAME IN (");
                     for (var x = 0; x < filters.Projects.Count; x++)
                     {
                         sb.Append(":" + (x + 1) + ",");
@@ -44,7 +44,7 @@ namespace Pivet.Data.Processors
                 }
                 else
                 {
-                    itemLoad.CommandText = "SELECT STYLESHEETNAME, LASTUPDOPRID FROM PSSTYLSHEETDEFN";
+                    itemLoad.CommandText = "SELECT STYLESHEETNAME, LASTUPDOPRID FROM PSSTYLSHEETDEFN WHERE STYLESHEETTYPE = 2";
                 }
 
                 using (var reader = itemLoad.ExecuteReader())
