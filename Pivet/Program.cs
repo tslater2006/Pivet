@@ -2,6 +2,7 @@
 using Newtonsoft.Json.Linq;
 using NStack;
 using Pivet.Data;
+using Pivet.GUI;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -132,12 +133,32 @@ namespace Pivet
 
         private static void Environments_Clicked()
         {
-            // TODO: Implement environment editor
+            var environmentsWindow = new EnvironmentEditorWindow(GlobalConfig)
+            {
+                X = 0,
+                Y = 1,
+                Width = Dim.Fill(),
+                Height = Dim.Fill() - 1
+            };
+
+            //Application.Top.Remove(mainWindow);
+            Application.Run(environmentsWindow);
+            //Application.Top.Add(environmentsWindow);
         }
 
         private static void Jobs_Clicked()
         {
-            // TODO: Implement job editor
+            var jobsWindow = new JobEditorWindow(GlobalConfig)
+            {
+                X = 0,
+                Y = 1,
+                Width = Dim.Fill(),
+                Height = Dim.Fill() - 1
+            };
+
+            //Application.Top.Remove(mainWindow);
+            Application.Run(jobsWindow);
+            //Application.Top.Add(environmentsWindow);
         }
 
         static void Main(string[] args)
