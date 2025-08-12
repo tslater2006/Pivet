@@ -1,7 +1,9 @@
 ﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using NStack;
 using Pivet.Data;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -9,18 +11,137 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security;
 using System.Threading.Tasks;
+using Terminal.Gui;
 
 namespace Pivet
-{    class Program
+{
+   class Program
     {
         public static List<Assembly> LoadedAssemblies = new List<Assembly>();
         public static bool ShowProgress;
         public static Config GlobalConfig;
+        public static string CurrentConfigPath;
         public static string CustomCommitMessage;
+
+        /* GUI components */
+        private static MenuBar menu;
+        private static Window mainWindow;
+        static void BuildMainWindow()
+        {
+
+            mainWindow = new Window("Pivet")
+            {
+                X = 0,
+                Y = 1,
+                Width = Dim.Fill(),
+                Height = Dim.Fill() - 1
+            };
+
+
+            Button environments = new Button("Environments")
+            {
+                X = Pos.Center(),
+                Y = Pos.Center(),
+                TextAlignment = TextAlignment.Centered
+            };
+
+            environments.Clicked += Environments_Clicked;
+
+            Button profiles = new Button("Profiles")
+            {
+                X = Pos.Center(),
+                Y = Pos.Bottom(environments) + 1,
+                TextAlignment = TextAlignment.Centered
+            };
+
+            Button jobs = new Button("Jobs")
+            {
+                X = Pos.Center(),
+                Y = Pos.Bottom(profiles) + 1,
+                TextAlignment = TextAlignment.Centered
+            };
+
+            jobs.Clicked += Jobs_Clicked;
+
+            mainWindow.Add(environments);
+            mainWindow.Add(profiles);
+            mainWindow.Add(jobs);
+        }
+
+        static void RunGUI()
+        {
+            Application.Init();
+
+            BuildMainWindow();
+
+            menu = new MenuBar(new MenuBarItem[] {
+            new MenuBarItem ("_File", new MenuItem [] {
+                new MenuItem ("_Create Config...", "", () =>
+                {
+                    var sd = new SaveDialog("Create Config","Choose where to create a new Pivet configuration.",new List<string>(){".json" });
+                    Application.Run(sd);
+
+                    if (sd.FileName != null)
+                    {
+                        CurrentConfigPath = sd.FileName.ToString();
+
+                        GlobalConfig = new Config();
+                        var configText = JsonConvert.SerializeObject(GlobalConfig);
+                        File.WriteAllText(CurrentConfigPath, configText);
+                        
+                    }
+                }),
+                new MenuItem ("_Load Config...", "", () =>
+                {
+                    var od = new OpenDialog("Load Config", "Select a configuration file to load.",new List<string>(){".json"});
+
+                    Application.Run(od);
+
+                    var filePath = od.FilePath.ToString();
+                    GlobalConfig = JsonConvert.DeserializeObject<Config>(File.ReadAllText(filePath));
+                    CurrentConfigPath = filePath;
+                }),
+                new MenuItem ("_Save Config...", "", () =>
+                {
+                    var configText = JsonConvert.SerializeObject(GlobalConfig);
+                    File.WriteAllText(CurrentConfigPath, configText);
+                }),
+                new MenuItem ("_Quit", "", () => {
+                    Application.RequestStop ();
+                })
+            }),
+            new MenuBarItem ("_Run", new MenuItem [] {
+                new MenuItem ("_Job", "", () =>
+                {
+
+                }),
+                new MenuItem ("_All Jobs", "", () =>
+                {
+
+                })
+            }),
+        });
+
+
+            // Add both menu and win in a single call
+            Application.Top.Add(menu, mainWindow);
+
+            Application.Run();
+            Application.Shutdown();
+        }
+
+        private static void Environments_Clicked()
+        {
+            // TODO: Implement environment editor
+        }
+
+        private static void Jobs_Clicked()
+        {
+            // TODO: Implement job editor
+        }
+
         static void Main(string[] args)
         {
-            /* Add main Pivet assembly */
-            LoadedAssemblies.Add(Assembly.GetExecutingAssembly());
             /* Load any plugin DLLs */
             if (Directory.Exists("plugins"))
             {
@@ -37,6 +158,12 @@ namespace Pivet
                     }
                 }
             }
+
+            if (args.Contains("--gui") || args.Contains ("-g")) {
+                RunGUI();
+                return;
+            }
+
             /* by default no custom commit message */
             CustomCommitMessage = "";
 
