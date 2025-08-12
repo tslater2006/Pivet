@@ -40,7 +40,8 @@ namespace Pivet.Data
                     try
                     {
                         var co = new CloneOptions();
-                        co.CredentialsProvider = (_url, _user, _cred) => new UsernamePasswordCredentials { Username = config.User, Password = config.Password };
+                        
+                        co.FetchOptions.CredentialsProvider = (_url, _user, _cred) => new UsernamePasswordCredentials { Username = config.User, Password = config.Password };
                         var result = Repository.Clone(config.Url, _repoBase, co);
                     } catch (Exception ex)
                     {

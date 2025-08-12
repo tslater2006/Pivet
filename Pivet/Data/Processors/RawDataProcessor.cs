@@ -102,7 +102,7 @@ namespace Pivet.Data
                 filePath = filePath.Replace("{" + col + "}", colValue);
             }
            
-	    string oprID;
+	        string oprID;
             if (item.Fields.ContainsKey("LASTUPDOPRID"))
             {
                 oprID = item.Fields["LASTUPDOPRID"].ToString();
@@ -346,7 +346,7 @@ namespace Pivet.Data
         public override int GetHashCode()
         {
             var encoder = new UTF8Encoding();
-            var hash = new SHA256CryptoServiceProvider();
+            var hash = SHA256.Create();
             var sb = new StringBuilder();
 
             foreach (var item in Fields.Values)
