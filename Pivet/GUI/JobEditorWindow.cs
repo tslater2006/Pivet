@@ -21,8 +21,10 @@ namespace Pivet.GUI
         private ComboBox profileChoice;
         private Button saveButton;
         private TextField userID;
+        private TextField password;
         private TextField remoteURL;
         private ComboBox commitStyle;
+        private CheckBox commitByOprid;
 
         internal void MarkDirty(NStack.ustring newValue)
         {
@@ -33,12 +35,62 @@ namespace Pivet.GUI
 
         internal void SaveJobData()
         {
-            /* selectedEnvironment.Name = environmentName.Text.ToString();
-            selectedEnvironment.Connection.TNS = tnsName.Text.ToString();
-            selectedEnvironment.Connection.TNS_ADMIN = tnsAdminPath.Text.ToString();
-            selectedEnvironment.Connection.Schema = schema.Text.ToString();
-            selectedEnvironment.Connection.BootstrapParameters.User = userID.Text.ToString();
-            selectedEnvironment.Connection.BootstrapParameters.EncryptedPassword = password.Text.ToString();*/
+            if (selectedJob == null) return;
+            
+            selectedJob.Name = jobName.Text.ToString();
+            selectedJob.OutputFolder = outputFolder.Text.ToString();
+            
+            // Set environment name from selected combo box
+            if (envChoice.SelectedItem >= 0 && envChoice.SelectedItem < current_config.Environments.Count)
+            {
+                selectedJob.EnvironmentName = current_config.Environments[envChoice.SelectedItem].Name;
+            }
+            
+            // Set profile name from selected combo box
+            if (profileChoice.SelectedItem >= 0 && profileChoice.SelectedItem < current_config.Profiles.Count)
+            {
+                selectedJob.ProfileName = current_config.Profiles[profileChoice.SelectedItem].Name;
+            }
+            
+            // Save repository configuration
+            selectedJob.Repository.User = userID.Text.ToString();
+            selectedJob.Repository.EncryptedPassword = password.Text.ToString();
+            selectedJob.Repository.Url = remoteURL.Text.ToString();
+            selectedJob.Repository.CommitByOprid = commitByOprid.Checked;
+            
+            // Set commit style from combo box
+            if (commitStyle.SelectedItem >= 0)
+            {
+                switch (commitStyle.SelectedItem)
+                {
+                    case 0:
+                        selectedJob.Repository.CommitStyle = CommitStyleOptions.SINGLE_COMMIT;
+                        break;
+                    case 1:
+                        selectedJob.Repository.CommitStyle = CommitStyleOptions.PEOPLECODE_SEPARATE;
+                        break;
+                    case 2:
+                        selectedJob.Repository.CommitStyle = CommitStyleOptions.TOP_LEVEL_SEPARATE;
+                        break;
+                }
+            }
+            
+            // Validate the job before saving
+            var validationResult = ConfigValidator.ValidateJob(selectedJob, current_config);
+            if (!validationResult.IsValid)
+            {
+                var errorMessages = string.Join("\n", validationResult.Errors.Select(e => e.Message));
+                MessageBox.ErrorQuery("Validation Errors", $"Cannot save job:\n{errorMessages}", "OK");
+                return;
+            }
+            
+            if (validationResult.HasWarnings)
+            {
+                var warningMessages = string.Join("\n", validationResult.Warnings.Select(w => w.Message));
+                var result = MessageBox.Query("Validation Warnings", $"Job has warnings:\n{warningMessages}\n\nSave anyway?", "Yes", "No");
+                if (result != 0) return;
+            }
+            
             saveButton.Visible = false;
             saveButton.SetNeedsDisplay();
             dirtyFlag = false;
@@ -71,13 +123,55 @@ namespace Pivet.GUI
 
             selectedJob = current_config.Jobs[index];
 
+            if (jobName == null)
+            {
+                /* UI hasn't been built yet */
+                return;
+            }
 
-            /*environmentName.Text = selectedEnvironment.Name;
-            tnsName.Text = selectedEnvironment.Connection.TNS;
-            tnsAdminPath.Text = selectedEnvironment.Connection.TNS_ADMIN;
-            schema.Text = selectedEnvironment.Connection.Schema;
-            userID.Text = selectedEnvironment.Connection.BootstrapParameters.User;
-            password.Text = selectedEnvironment.Connection.BootstrapParameters.EncryptedPassword;*/
+            // Populate job fields
+            jobName.Text = selectedJob.Name;
+            outputFolder.Text = selectedJob.OutputFolder;
+            
+            // Set environment combo box selection
+            for (int i = 0; i < current_config.Environments.Count; i++)
+            {
+                if (current_config.Environments[i].Name == selectedJob.EnvironmentName)
+                {
+                    envChoice.SelectedItem = i;
+                    break;
+                }
+            }
+            
+            // Set profile combo box selection
+            for (int i = 0; i < current_config.Profiles.Count; i++)
+            {
+                if (current_config.Profiles[i].Name == selectedJob.ProfileName)
+                {
+                    profileChoice.SelectedItem = i;
+                    break;
+                }
+            }
+            
+            // Populate repository fields
+            userID.Text = selectedJob.Repository.User;
+            password.Text = selectedJob.Repository.EncryptedPassword;
+            remoteURL.Text = selectedJob.Repository.Url;
+            commitByOprid.Checked = selectedJob.Repository.CommitByOprid;
+            
+            // Set commit style combo box
+            switch (selectedJob.Repository.CommitStyle)
+            {
+                case CommitStyleOptions.SINGLE_COMMIT:
+                    commitStyle.SelectedItem = 0;
+                    break;
+                case CommitStyleOptions.PEOPLECODE_SEPARATE:
+                    commitStyle.SelectedItem = 1;
+                    break;
+                case CommitStyleOptions.TOP_LEVEL_SEPARATE:
+                    commitStyle.SelectedItem = 2;
+                    break;
+            }
 
             dirtyFlag = createdDefaultJob;
         }
@@ -299,6 +393,14 @@ namespace Pivet.GUI
             commitStyle.SetSource(new string[] { "Single Commit","PeopleCode Separate","Top Level Folders"});
             repoFrame.Add(label, commitStyle);
 
+            commitByOprid = new CheckBox("Commit By Oprid")
+            {
+                X = Pos.Right(commitStyle) + 2,
+                Y = Pos.Top(commitStyle),
+                AutoSize = true
+            };
+            repoFrame.Add(commitByOprid);
+
             label = new Label("Git User: ")
             {
                 X = 1,
@@ -323,20 +425,21 @@ namespace Pivet.GUI
                 AutoSize = true
             };
 
-            remoteURL = new TextField()
+            password = new TextField()
             {
                 X = Pos.Right(label),
                 Y = Pos.Top(label),
                 Height = 1,
-                Width = 20
+                Width = 20,
+                Secret = true
             };
 
-            repoFrame.Add(label, remoteURL);
+            repoFrame.Add(label, password);
 
             button = new Button("Encrypt")
             {
-                X = Pos.Right(remoteURL) + 1,
-                Y = Pos.Top(remoteURL),
+                X = Pos.Right(password) + 1,
+                Y = Pos.Top(password),
                 Height = 1,
                 Width = 11
             };
@@ -386,10 +489,21 @@ namespace Pivet.GUI
                 SelectJob(0);
             }
 
-            /* close window */
+            /* keyboard shortcuts */
             KeyUp += (e) => {
-                if (e.KeyEvent.Key == Key.Esc)
-                    RequestStop();
+                switch (e.KeyEvent.Key)
+                {
+                    case Key.Esc:
+                        RequestStop();
+                        break;
+                    case Key.CtrlMask | Key.S:
+                        if (saveButton.Visible)
+                            SaveJobData();
+                        break;
+                    case Key.CtrlMask | Key.N:
+                        CreateJobButton_Clicked();
+                        break;
+                }
             };
 
             jobName.TextChanged += MarkDirty;
@@ -397,12 +511,19 @@ namespace Pivet.GUI
             envChoice.SelectedItemChanged += MarkDirty_List;
             profileChoice.SelectedItemChanged += MarkDirty_List;
             userID.TextChanged += MarkDirty;
+            password.TextChanged += MarkDirty;
             remoteURL.TextChanged += MarkDirty;
             commitStyle.SelectedItemChanged += MarkDirty_List;
+            commitByOprid.Toggled += MarkDirty_Checkbox;
             Closing += JobEditorWindow_Closing;
         }
 
         private void MarkDirty_List(ListViewItemEventArgs obj)
+        {
+            MarkDirty("");
+        }
+
+        private void MarkDirty_Checkbox(bool value)
         {
             MarkDirty("");
         }
@@ -431,15 +552,20 @@ namespace Pivet.GUI
         {
             var encrypt = new EncryptDialog();
             Application.Run(encrypt);
-            remoteURL.Text = encrypt.Result;
+            password.Text = encrypt.Result;
         }
 
 
         private void CreateJobButton_Clicked()
         {
             PromptForSaveIfNeeded();
-            var new_env = new EnvironmentConfig() { Name = "<unnamed>" };
-            current_config.Environments.Add(new_env);
+            var new_job = new JobConfig() { Name = "<unnamed>" };
+            current_config.Jobs.Add(new_job);
+            
+            // Refresh the list and select the new job
+            var wrapper = new ListWrapper(current_config.Jobs);
+            jobList.Source = wrapper;
+            jobList.SelectedItem = current_config.Jobs.Count - 1;
             jobList.SetFocus();
         }
     }

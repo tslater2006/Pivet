@@ -55,6 +55,8 @@ namespace Pivet
                 TextAlignment = TextAlignment.Centered
             };
 
+            profiles.Clicked += Profiles_Clicked;
+
             Button jobs = new Button("Jobs")
             {
                 X = Pos.Center(),
@@ -104,8 +106,40 @@ namespace Pivet
                 }),
                 new MenuItem ("_Save Config...", "", () =>
                 {
-                    var configText = JsonConvert.SerializeObject(GlobalConfig);
-                    File.WriteAllText(CurrentConfigPath, configText);
+                    // Validate configuration before saving
+                    var validationResult = GUI.ConfigValidator.ValidateConfig(GlobalConfig);
+                    
+                    if (!validationResult.IsValid)
+                    {
+                        var errorMessages = string.Join("\n", validationResult.Errors.Select(e => e.Message));
+                        MessageBox.ErrorQuery("Configuration Validation Errors", 
+                            $"Cannot save configuration due to errors:\n\n{errorMessages}", "OK");
+                        return;
+                    }
+                    
+                    if (validationResult.HasWarnings)
+                    {
+                        var warningMessages = string.Join("\n", validationResult.Warnings.Select(w => w.Message));
+                        var result = MessageBox.Query("Configuration Validation Warnings", 
+                            $"Configuration has warnings:\n\n{warningMessages}\n\nSave anyway?", "Yes", "No");
+                        if (result != 0) return;
+                    }
+                    
+                    try
+                    {
+                        var configText = JsonConvert.SerializeObject(GlobalConfig, Formatting.Indented);
+                        File.WriteAllText(CurrentConfigPath, configText);
+                        
+                        var successMessage = validationResult.HasMessages 
+                            ? $"Configuration saved successfully!\n\nValidation summary:\n- Errors: {validationResult.Errors.Count}\n- Warnings: {validationResult.Warnings.Count}\n- Info: {validationResult.InfoMessages.Count}"
+                            : "Configuration saved successfully!";
+                            
+                        MessageBox.Query("Save Complete", successMessage, "OK");
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.ErrorQuery("Save Error", $"Failed to save configuration:\n{ex.Message}", "OK");
+                    }
                 }),
                 new MenuItem ("_Quit", "", () => {
                     Application.RequestStop ();
@@ -123,7 +157,8 @@ namespace Pivet
             }),
         });
 
-
+            GlobalConfig = JsonConvert.DeserializeObject<Config>(File.ReadAllText("config.json"));
+            CurrentConfigPath = "config.json";
             // Add both menu and win in a single call
             Application.Top.Add(menu, mainWindow);
 
@@ -144,6 +179,19 @@ namespace Pivet
             //Application.Top.Remove(mainWindow);
             Application.Run(environmentsWindow);
             //Application.Top.Add(environmentsWindow);
+        }
+
+        private static void Profiles_Clicked()
+        {
+            var profilesWindow = new ProfileEditorWindow(GlobalConfig)
+            {
+                X = 0,
+                Y = 1,
+                Width = Dim.Fill(),
+                Height = Dim.Fill() - 1
+            };
+
+            Application.Run(profilesWindow);
         }
 
         private static void Jobs_Clicked()

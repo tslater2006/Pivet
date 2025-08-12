@@ -39,6 +39,23 @@ namespace Pivet.GUI
             selectedEnvironment.Connection.Schema = schema.Text.ToString();
             selectedEnvironment.Connection.BootstrapParameters.User = userID.Text.ToString();
             selectedEnvironment.Connection.BootstrapParameters.EncryptedPassword = password.Text.ToString();
+            
+            // Validate the environment before saving
+            var validationResult = ConfigValidator.ValidateEnvironment(selectedEnvironment);
+            if (!validationResult.IsValid)
+            {
+                var errorMessages = string.Join("\n", validationResult.Errors.Select(e => e.Message));
+                MessageBox.ErrorQuery("Validation Errors", $"Cannot save environment:\n{errorMessages}", "OK");
+                return;
+            }
+            
+            if (validationResult.HasWarnings)
+            {
+                var warningMessages = string.Join("\n", validationResult.Warnings.Select(w => w.Message));
+                var result = MessageBox.Query("Validation Warnings", $"Environment has warnings:\n{warningMessages}\n\nSave anyway?", "Yes", "No");
+                if (result != 0) return;
+            }
+            
             saveButton.Visible = false;
             saveButton.SetNeedsDisplay();
             dirtyFlag = false;
@@ -377,10 +394,21 @@ namespace Pivet.GUI
             password.TextChanged += MarkDirty;
 
 
-            /* close window */
+            /* keyboard shortcuts */
             KeyUp += (e) => {
-                if (e.KeyEvent.Key == Key.Esc)
-                    RequestStop();
+                switch (e.KeyEvent.Key)
+                {
+                    case Key.Esc:
+                        RequestStop();
+                        break;
+                    case Key.CtrlMask | Key.S:
+                        if (saveButton.Visible)
+                            SaveEnvironmentData();
+                        break;
+                    case Key.CtrlMask | Key.N:
+                        CreateEnvButton_Clicked();
+                        break;
+                }
             };
 
             Closing += EnvironmentEditorWindow_Closing;
