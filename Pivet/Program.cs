@@ -228,6 +228,8 @@ namespace Pivet
                 }
             }
 
+            LoadedAssemblies.Add(Assembly.GetExecutingAssembly());
+
             if (args.Contains("--gui") || args.Contains ("-g")) {
                 RunGUI();
                 return;
@@ -241,6 +243,7 @@ namespace Pivet
             var jobToRun = "";
             var wantsBuilder = false;
             var passwordEncryptMode = false;
+            var rawDataTestMode = false;
             ShowProgress = false;
 
             if (args.Contains("-e"))
@@ -250,7 +253,7 @@ namespace Pivet
 
             if (args.Length > 1)
             {
-                for (var x = 0; x < args.Length - 1; x++)
+                for (var x = 0; x < args.Length; x++)
                 {
                     if (args[x].ToLower().Equals("-c"))
                     {
@@ -280,6 +283,11 @@ namespace Pivet
                         CustomCommitMessage = args[x + 1];
                         x++;
                     }
+                    if (args[x].ToLower().Equals("--raw-data-test"))
+                    {
+                        Console.WriteLine("Running in raw data test mode, no jobs will be executed");
+                        rawDataTestMode = true;
+                    }
                 }
             }
             else if (args.Length == 1)
@@ -291,6 +299,11 @@ namespace Pivet
                 if (args[0].ToLower().Equals("-v"))
                 {
                     ShowProgress = true;
+                }
+                if (args[0].ToLower().Equals("--raw-data-test"))
+                {
+                    Console.WriteLine("Running in raw data test mode, no jobs will be executed");
+                    rawDataTestMode = true;
                 }
             }
 
@@ -361,7 +374,6 @@ namespace Pivet
 
             Logger.Write($"Config loaded. {GlobalConfig.Environments.Count} Environment(s) found, {GlobalConfig.Profiles.Count} Profile(s) found.");
 
-
             List<JobConfig> jobsToRun = new List<JobConfig>();
 
             foreach (var job in GlobalConfig.Jobs)
@@ -378,8 +390,15 @@ namespace Pivet
                         }
                         else
                         {
-                            //jobsToRun.Add(job);
-                            JobRunner.Run(GlobalConfig, job);
+                            if (rawDataTestMode)
+                            {
+                                JobRunner.RunRawDataTest(GlobalConfig, job);
+                            }
+                            else
+                            {
+                                //jobsToRun.Add(job);
+                                JobRunner.Run(GlobalConfig, job);
+                            }
                         }
                     }
                 }
@@ -392,8 +411,15 @@ namespace Pivet
                     }
                     else
                     {
-                        //jobsToRun.Add(job);
-                        JobRunner.Run(GlobalConfig, job); 
+                        if (rawDataTestMode)
+                        {
+                            JobRunner.RunRawDataTest(GlobalConfig, job);
+                        }
+                        else
+                        {
+                            //jobsToRun.Add(job);
+                            JobRunner.Run(GlobalConfig, job); 
+                        }
                     }
                 }
 

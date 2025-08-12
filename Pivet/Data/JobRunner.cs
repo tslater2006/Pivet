@@ -134,7 +134,65 @@ namespace Pivet.Data
 
         }
 
-        static List<IDataProcessor> FindProviders()
+        public static Tuple<bool, string> RunRawDataTest(Config global, JobConfig job)
+        {
+            ProfileConfig profile = global.Profiles.Where(p => p.Name.Equals(job.ProfileName)).FirstOrDefault();
+            EnvironmentConfig config = global.Environments.Where(p => p.Name.Equals(job.EnvironmentName)).FirstOrDefault();
+
+            if (profile == null || config == null)
+            {
+                return new Tuple<bool, string>(false, "Error running job, either Profile or Environment was not found.");
+            }
+
+            // Check if profile contains RawDataProcessor
+            if (!profile.DataProviders.Contains("RawDataProcessor"))
+            {
+                Logger.Error("Raw data test mode requires the job profile to include RawDataProcessor in its DataProviders.");
+                return new Tuple<bool, string>(false, "Raw data test mode requires RawDataProcessor in profile.");
+            }
+
+            Logger.Write($"Running Raw Data Test for Environment '{config.Name}'");
+
+            /* First thing is to get DB connection */
+            var connectionProvider = config.Connection.Provider;
+            Logger.Write("Getting database connection...");
+            var providerType = Type.GetType("Pivet.Data.Connection." + connectionProvider + "Connection");
+            if (providerType == null)
+            {
+                Logger.Write("Unable to find the specified DB provider.");
+                return new Tuple<bool, string>(false, "Unable to find the specified DB provider.");
+            }
+
+            var dbProvider = Activator.CreateInstance(providerType) as IConnectionProvider;
+
+            Dictionary<string, string> dbParams = new Dictionary<string, string>();
+            dbProvider.SetParameters(config.Connection);
+            var connectionResult = dbProvider.GetConnection();
+
+            if (connectionResult.Item2 == false)
+            {
+                Logger.Write("Error connecting to database: " + connectionResult.Item3);
+                return new Tuple<bool, string>(false, "Error connecting to database: " + connectionResult.Item3);
+            }
+
+            var _conn = connectionResult.Item1;
+            Logger.Write("Connected to Database.");
+
+            // Create RawDataProcessor and run test
+            var rawDataProcessor = new RawDataProcessor();
+            rawDataProcessor.LoadItems(_conn, profile.Filters);
+            
+            // Use current directory for output
+            string outputPath = Directory.GetCurrentDirectory();
+            rawDataProcessor.TestRelatedTables(outputPath);
+
+            _conn.Close();
+            Logger.Write("Raw data test completed successfully.");
+            
+            return new Tuple<bool, string>(true, "");
+        }
+
+        public static List<IDataProcessor> FindProviders()
         {
             var type = typeof(IDataProcessor);
             return AppDomain.CurrentDomain.GetAssemblies().Where(a => Program.LoadedAssemblies.Contains(a)).SelectMany(s => s.GetTypes()).Where(p => type.IsAssignableFrom(p) && !p.IsInterface && !p.IsAbstract).Select(s => Activator.CreateInstance(s) as IDataProcessor).ToList();

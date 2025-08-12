@@ -152,6 +152,78 @@ namespace Pivet.Data
             }
         }
 
+        private (List<string> keyFields, List<string> relatedTables) DiscoverRelatedTables(RawDataEntry item)
+        {
+            List<string> recordKeyFields = new List<string>();
+            List<string> relatedTables = new List<string>();
+            
+            Logger.Write($"Finding Key Fields for record: {item.Record}");
+
+            bool tableExists = true;
+            /* Ensure the table exists */
+            using (OracleCommand fieldCount = new OracleCommand("SELECT COUNT(FIELDNAME) FROM PSRECFIELD WHERE RECNAME = :1", _conn))
+            {
+                fieldCount.Parameters.Add(new OracleParameter() { OracleDbType = OracleDbType.Varchar2, Value = item.Record });
+                using (var reader = fieldCount.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        if (reader.GetInt32(0) == 0)
+                        {
+                            tableExists = false;
+                        }
+                    }
+                }
+            }
+            if (tableExists == false)
+            {
+                Logger.Write($"Skipping record: {item.Record} since it doesn't exist in target database.");
+                return (recordKeyFields, relatedTables);
+            }
+            
+            using (OracleCommand keyCommand = new OracleCommand("SELECT FIELDNAME FROM PSRECFIELD WHERE RECNAME = :1 AND MOD(USEEDIT,2) = 1", _conn))
+            {
+                keyCommand.Parameters.Add(new OracleParameter() { OracleDbType = OracleDbType.Varchar2, Value = item.Record });
+
+                using (var reader = keyCommand.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        var keyFieldName = reader.GetString(0);
+                        recordKeyFields.Add(keyFieldName);
+                    }
+                }
+            }
+
+            Logger.Write($"Record has {recordKeyFields.Count} keys: {string.Join(", ", recordKeyFields)}");
+
+            Logger.Write("Finding related tables.");
+
+            var keyFieldsForInClause = "'" + string.Join("', '", recordKeyFields) + "'";
+
+            using (OracleCommand relatedTableCommand = new OracleCommand($"SELECT CASE WHEN SQLTABLENAME = ' ' THEN 'PS_' || RECNAME ELSE SQLTABLENAME END FROM PSRECDEFN WHERE RECNAME IN  (SELECT DISTINCT RECNAME FROM PSRECFIELD WHERE FIELDNAME IN({keyFieldsForInClause}) AND MOD(USEEDIT, 2) = 1 GROUP BY RECNAME HAVING COUNT(FIELDNAME) = {recordKeyFields.Count}) AND RECTYPE = 0 AND RECNAME <> '{item.Record}'", _conn))
+            {
+                using (var reader = relatedTableCommand.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        var relatedTable = reader.GetString(0);
+                        if (item.RelatedBlacklist.Contains(relatedTable))
+                        {
+                            continue;
+                        }
+                        else
+                        {
+                            relatedTables.Add(relatedTable);
+                        }
+                    }
+                }
+            }
+
+            Logger.Write($"Found {relatedTables.Count} Related Tables.");
+            return (recordKeyFields, relatedTables);
+        }
+
         private Dictionary<RawDataEntry, List<RawDataItem>> GetItems()
         {
             Dictionary<RawDataEntry, List<RawDataItem>> returnedItems = new Dictionary<RawDataEntry, List<RawDataItem>>();
@@ -159,73 +231,13 @@ namespace Pivet.Data
             foreach(var _item in _entries)
             {
                 List<RawDataItem> entryItems = new List<RawDataItem>();
-                Logger.Write($"Finding Key Fields for record: {_item.Record}");
-
-                List<string> recordKeyFields = new List<string>();
-                List<string> relatedTables = new List<string>();
-                bool tableExists = true;
-                /* Ensure the table exists */
-                using (OracleCommand fieldCount = new OracleCommand("SELECT COUNT(FIELDNAME) FROM PSRECFIELD WHERE RECNAME = :1", _conn))
+                
+                var (recordKeyFields, relatedTables) = DiscoverRelatedTables(_item);
+                
+                if (recordKeyFields.Count == 0)
                 {
-                    fieldCount.Parameters.Add(new OracleParameter() { OracleDbType = OracleDbType.Varchar2, Value = _item.Record });
-                    using (var reader = fieldCount.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            if (reader.GetInt32(0) == 0)
-                            {
-                                tableExists = false;
-                            }
-                        }
-                    }
-                }
-                if (tableExists == false)
-                {
-                    Logger.Write($"Skipping record: {_item.Record} since it doesn't exist in target database.");
-                    /* table doesn't exist! */
                     continue;
                 }
-                using (OracleCommand keyCommand = new OracleCommand("SELECT FIELDNAME FROM PSRECFIELD WHERE RECNAME = :1 AND MOD(USEEDIT,2) = 1", _conn))
-                {
-                    keyCommand.Parameters.Add(new OracleParameter() { OracleDbType = OracleDbType.Varchar2, Value = _item.Record });
-
-                    using (var reader = keyCommand.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            var keyFieldName = reader.GetString(0);
-                            recordKeyFields.Add(keyFieldName);
-                        }
-                    }
-
-                }
-
-                Logger.Write($"Record has {recordKeyFields.Count} keys: {string.Join(", ", recordKeyFields)}");
-
-                Logger.Write("Finding related tables.");
-
-                var keyFieldsForInClause = "'" + string.Join("', '", recordKeyFields) + "'";
-
-                using (OracleCommand relatedTableCommand = new OracleCommand($"SELECT CASE WHEN SQLTABLENAME = ' ' THEN 'PS_' || RECNAME ELSE SQLTABLENAME END FROM PSRECDEFN WHERE RECNAME IN  (SELECT DISTINCT RECNAME FROM PSRECFIELD WHERE FIELDNAME IN({keyFieldsForInClause}) AND MOD(USEEDIT, 2) = 1 GROUP BY RECNAME HAVING COUNT(FIELDNAME) = {recordKeyFields.Count}) AND RECTYPE = 0 AND RECNAME <> '{_item.Record}'", _conn))
-                {
-                    using (var reader = relatedTableCommand.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            var relatedTable = reader.GetString(0);
-                            if (_item.RelatedBlacklist.Contains(relatedTable))
-                            {
-                                continue;
-                            }
-                            else
-                            {
-                                relatedTables.Add(relatedTable);
-                            }
-                        }
-                    }
-                }
-
-                Logger.Write($"Found {relatedTables.Count} Related Tables.");
 
                 Logger.Write($"Processing top level rows for {_item.Record}");
 
@@ -353,6 +365,43 @@ namespace Pivet.Data
             }
 
             return item;
+        }
+
+        public void TestRelatedTables(string outputPath)
+        {
+            StringBuilder output = new StringBuilder();
+            
+            foreach (var _item in _entries)
+            {
+                var (recordKeyFields, relatedTables) = DiscoverRelatedTables(_item);
+                
+                if (recordKeyFields.Count == 0)
+                {
+                    output.AppendLine($"Record: {_item.Record}");
+                    output.AppendLine("   [Table does not exist in target database]");
+                    output.AppendLine();
+                    continue;
+                }
+                
+                output.AppendLine($"Record: {_item.Record}");
+                output.AppendLine("Related Records:");
+                
+                if (relatedTables.Count == 0)
+                {
+                    output.AppendLine("   [No related tables found]");
+                }
+                else
+                {
+                    foreach (var relatedTable in relatedTables.OrderBy(t => t))
+                    {
+                        output.AppendLine($"   {relatedTable}");
+                    }
+                }
+                output.AppendLine();
+            }
+            
+            File.WriteAllText(Path.Combine(outputPath, "raw-data-test-results.txt"), output.ToString());
+            Logger.Write($"Raw data test results written to: {Path.Combine(outputPath, "raw-data-test-results.txt")}");
         }
 
     }
