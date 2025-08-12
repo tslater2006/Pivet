@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Pivet": {
+      "commandName": "Project",
+      "commandLineArgs": "--gui"
+    }
+  }
+}
