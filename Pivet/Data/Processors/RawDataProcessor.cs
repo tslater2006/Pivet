@@ -113,18 +113,42 @@ namespace Pivet.Data
             
 
             Directory.CreateDirectory(Path.GetDirectoryName(filePath));
-            CanonicalizeItem(item);
-            File.WriteAllText(filePath, JsonConvert.SerializeObject(item,Formatting.Indented));
+            var itemAsJObject = JObject.FromObject(item);
+
+            CanonicalizeItem(itemAsJObject);
+
+            File.WriteAllText(filePath, itemAsJObject.ToString(Formatting.Indented));
 
             return new ChangedItem(filePath, oprID);
         }
 
-        private void CanonicalizeItem(RawDataItem item)
+        private static void CanonicalizeItem(JToken token)
         {
-            /* for conanoicalization we really only care about the ordering of related rows remains consistent */
-            foreach(var relatedTable in item.RelatedTables)
+            switch (token.Type)
             {
-                relatedTable.Rows = relatedTable.Rows.OrderBy(i => i.GetHashCode()).ToList();
+                case JTokenType.Object:
+                    var obj = (JObject)token;
+                    var properties = obj.Properties().ToList();
+                    properties.Sort((p1, p2) => string.CompareOrdinal(p1.Name, p2.Name));
+
+                    obj.RemoveAll();
+
+                    foreach (var property in properties)
+                    {
+                        CanonicalizeItem(property.Value);
+                        obj.Add(property);
+                    }
+                    break;
+
+                case JTokenType.Array:
+                    var array = (JArray)token;
+                    foreach (var item in array)
+                    {
+                        CanonicalizeItem(item);
+                    }
+                    var sortedArray = new JArray(array.OrderBy(t => t.ToString(), StringComparer.Ordinal));
+                    array.Replace(sortedArray);
+                    break;
             }
         }
 

@@ -118,7 +118,7 @@ namespace Pivet
         public string Schema = "";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        public BootstrapParams BootstrapParameters;
+        public BootstrapParams BootstrapParameters = new BootstrapParams();
     }
 
     public class FilterConfig
@@ -156,7 +156,7 @@ namespace Pivet
     public class RepositoryConfig
     {
         [JsonProperty(Required = Required.Always)]
-        public bool CommitByOprid = true;
+        public bool CommitByOprid = false;
 
         [JsonProperty(Required = Required.Always)]
         public string Url = "";
