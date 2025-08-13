@@ -2,6 +2,8 @@
 using Pivet;
 using Pivet.Data;
 using Pivet.Data.Processors;
+using Pivet.Data.Connection;
+using Oracle.ManagedDataAccess.Client;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -89,6 +91,18 @@ namespace Pivet
                 }
             } while (modifyEnv == "y");
 
+            var testEnv = "n";
+            do
+            {
+                PromptWithDefault("Would you like to test an environment connection? (y/n)", ref testEnv);
+
+                if (testEnv == "y")
+                {
+                    EnvironmentConfig toTest = PromptWithList("Select the environment connection to test", configFile.Environments);
+                    TestConnection(toTest.Connection);
+                }
+            } while (testEnv == "y");
+
             var addEnv = "n";
             do
             {
@@ -118,7 +132,7 @@ namespace Pivet
                     ProfileConfig toModify = PromptWithList("Select the profile you wish to modify", configFile.Profiles);
                     ModifyProfile(toModify);
                 }
-            } while (modifyEnv == "y");
+            } while (modifyProfile == "y");
 
 
             var addProfile = "n";
@@ -132,6 +146,41 @@ namespace Pivet
                 }
             } while (addProfile == "y");
 
+
+            /* Check for jobs, if none we need to add one */
+            if (configFile.Jobs.Count == 0)
+            {
+                Console.WriteLine("There are currently no jobs defined. Making a new one.");
+                AddJob();
+            }
+
+            var modifyJob = "n";
+            do
+            {
+                PromptWithDefault("Would you like to modify an existing job? (y/n)", ref modifyJob);
+
+                if (modifyJob == "y")
+                {
+                    JobConfig toModify = PromptWithList("Select the job you wish to modify", configFile.Jobs);
+                    ModifyJob(toModify);
+                }
+            } while (modifyJob == "y");
+
+            var addJob = "n";
+            do
+            {
+                PromptWithDefault("Would you like to create a new job? (y/n)", ref addJob);
+
+                if (addJob == "y")
+                {
+                    AddJob();
+                }
+            } while (addJob == "y");
+
+            // Validate configuration before saving
+            ValidateConfiguration();
+
+            SaveConfig();
         }
 
         private static void ModifyEnvironment(EnvironmentConfig toModify)
@@ -163,9 +212,17 @@ namespace Pivet
                     string tempPassword = "";
                     PromptWithDefault("Enter the password", ref tempPassword);
                     conn.BootstrapParameters.Password = tempPassword;
-                    tempPassword = null;
                     break;
             }
+
+            // Offer to test the connection
+            var testConnection = "y";
+            PromptWithDefault("Would you like to test this database connection? (y/n)", ref testConnection);
+            if (testConnection == "y")
+            {
+                TestConnection(toModify.Connection);
+            }
+
             SaveConfig();
         }
 
@@ -186,6 +243,16 @@ namespace Pivet
             ModifyProfile(profile);
 
             configFile.Profiles.Add(profile);
+            SaveConfig();
+        }
+
+        static void AddJob()
+        {
+            JobConfig job = new JobConfig();
+
+            ModifyJob(job);
+
+            configFile.Jobs.Add(job);
             SaveConfig();
         }
         static List<string> FindProviders() {
@@ -236,6 +303,38 @@ namespace Pivet
                 }
 
             }*/
+
+            SaveConfig();
+        }
+
+        static void ModifyJob(JobConfig job)
+        {
+            PromptWithDefault("Please give this job a name", ref job.Name);
+            
+            PromptWithDefault("Enter the output folder path", ref job.OutputFolder);
+
+            if (configFile.Environments.Count == 0)
+            {
+                Console.WriteLine("Warning: No environments defined. You must create environments before configuring jobs.");
+                return;
+            }
+
+            if (configFile.Profiles.Count == 0)
+            {
+                Console.WriteLine("Warning: No profiles defined. You must create profiles before configuring jobs.");
+                return;
+            }
+
+            // Select environment
+            EnvironmentConfig selectedEnv = PromptWithList("Select the environment this job should use", configFile.Environments);
+            job.EnvironmentName = selectedEnv.Name;
+
+            // Select profile
+            ProfileConfig selectedProfile = PromptWithList("Select the profile this job should use", configFile.Profiles);
+            job.ProfileName = selectedProfile.Name;
+
+            // Configure repository
+            ModifyRepository(job.Repository);
 
             SaveConfig();
         }
@@ -296,16 +395,125 @@ namespace Pivet
             var includedRelated = "n";
             PromptWithDefault("Would you like to include related tables? (y/n)", ref includedRelated);
 
+            var extraCriteria = entry.ExtraCriteria ?? "";
+            PromptWithDefault("Enter any extra SQL WHERE criteria (leave blank for none)", ref extraCriteria);
+
+            // Initialize RelatedBlacklist if null
+            if (entry.RelatedBlacklist == null)
+            {
+                entry.RelatedBlacklist = new List<string>();
+            }
+
+            // Configure related blacklist if they want to include related tables
+            if (includedRelated == "y")
+            {
+                ManageRelatedBlacklist(entry.RelatedBlacklist);
+            }
+            
             entry.Record = recordName;
             entry.FilterField = filterField;
             entry.NamePattern = namePattern;
             entry.Folder = folderName;
             entry.IncludeRelated = (includedRelated == "y");
+            entry.ExtraCriteria = string.IsNullOrWhiteSpace(extraCriteria) ? null : extraCriteria;
+        }
+
+        static void ManageRelatedBlacklist(List<string> blacklist)
+        {
+            string configureBlacklist = "n";
+            PromptWithDefault("Would you like to configure related table blacklist (tables to exclude)? (y/n)", ref configureBlacklist);
+            
+            if (configureBlacklist != "y")
+            {
+                return;
+            }
+
+            if (blacklist.Count > 0)
+            {
+                Console.WriteLine("Current blacklisted tables:");
+                for (int i = 0; i < blacklist.Count; i++)
+                {
+                    Console.WriteLine($"   {i + 1}.) {blacklist[i]}");
+                }
+
+                string removeItems = "n";
+                PromptWithDefault("Would you like to remove any blacklisted tables? (y/n)", ref removeItems);
+                
+                while (removeItems == "y")
+                {
+                    var indexToRemove = "1";
+                    PromptWithDefault("Which table would you like to remove? (enter number)", ref indexToRemove);
+                    
+                    if (int.TryParse(indexToRemove, out int index) && index > 0 && index <= blacklist.Count)
+                    {
+                        string removedTable = blacklist[index - 1];
+                        blacklist.RemoveAt(index - 1);
+                        Console.WriteLine($"Removed '{removedTable}' from blacklist.");
+                    }
+                    else
+                    {
+                        Console.WriteLine("Invalid selection.");
+                    }
+
+                    if (blacklist.Count > 0)
+                    {
+                        PromptWithDefault("Would you like to remove another table? (y/n)", ref removeItems);
+                    }
+                    else
+                    {
+                        removeItems = "n";
+                    }
+                }
+            }
+
+            string addItems = "y";
+            PromptWithDefault("Would you like to add tables to the blacklist? (y/n)", ref addItems);
+            
+            while (addItems == "y")
+            {
+                string tableName = "";
+                PromptWithDefault("Enter the table name to blacklist", ref tableName);
+                
+                if (!string.IsNullOrWhiteSpace(tableName) && !blacklist.Contains(tableName))
+                {
+                    blacklist.Add(tableName);
+                    Console.WriteLine($"Added '{tableName}' to blacklist.");
+                }
+                else if (blacklist.Contains(tableName))
+                {
+                    Console.WriteLine($"Table '{tableName}' is already in the blacklist.");
+                }
+
+                PromptWithDefault("Would you like to add another table to blacklist? (y/n)", ref addItems);
+            }
         }
 
         static void ModifyRepository(RepositoryConfig repo)
         {
+            var configureRepo = "n";
+            PromptWithDefault("Would you like to configure remote repository settings? (y/n)", ref configureRepo);
 
+            if (configureRepo != "y")
+            {
+                return;
+            }
+
+            PromptWithDefault("Enter the remote repository URL", ref repo.Url);
+            PromptWithDefault("Enter the git username", ref repo.User);
+            
+            string tempPassword = "";
+            PromptWithDefault("Enter the git password/token", ref tempPassword);
+            if (!string.IsNullOrEmpty(tempPassword))
+            {
+                repo.Password = tempPassword;
+            }
+
+            var commitByOprid = (repo.CommitByOprid ? "y" : "n");
+            PromptWithDefault("Would you like commits done by OPRID where possible? (y/n)", ref commitByOprid);
+            repo.CommitByOprid = (commitByOprid == "y");
+
+            var selectedCommitStyle = PromptWithEnum<CommitStyleOptions>("Select the commit style");
+            repo.CommitStyle = selectedCommitStyle;
         }
 
         static void ModifyFilters(FilterConfig filters, bool hasMsgCat)
@@ -523,6 +731,193 @@ namespace Pivet
         {
             var configText = JsonConvert.SerializeObject(configFile, Formatting.Indented);
             File.WriteAllText(configPath, configText);
+        }
+
+        static void ValidateConfiguration()
+        {
+            List<string> errors = new List<string>();
+            List<string> warnings = new List<string>();
+
+            // Validate environments
+            if (configFile.Environments.Count == 0)
+            {
+                errors.Add("No environments defined");
+            }
+            else
+            {
+                foreach (var env in configFile.Environments)
+                {
+                    if (string.IsNullOrWhiteSpace(env.Name))
+                        errors.Add($"Environment has no name");
+                    if (string.IsNullOrWhiteSpace(env.Connection.TNS))
+                        errors.Add($"Environment '{env.Name}' has no TNS connection name");
+                    if (env.Connection.BootstrapParameters == null || string.IsNullOrWhiteSpace(env.Connection.BootstrapParameters.User))
+                        errors.Add($"Environment '{env.Name}' has no bootstrap user");
+                }
+            }
+
+            // Validate profiles
+            if (configFile.Profiles.Count == 0)
+            {
+                errors.Add("No profiles defined");
+            }
+            else
+            {
+                foreach (var profile in configFile.Profiles)
+                {
+                    if (string.IsNullOrWhiteSpace(profile.Name))
+                        errors.Add($"Profile has no name");
+                    if (profile.DataProviders.Count == 0)
+                        warnings.Add($"Profile '{profile.Name}' has no data providers");
+                }
+            }
+
+            // Validate jobs
+            if (configFile.Jobs.Count == 0)
+            {
+                errors.Add("No jobs defined");
+            }
+            else
+            {
+                foreach (var job in configFile.Jobs)
+                {
+                    if (string.IsNullOrWhiteSpace(job.Name))
+                        errors.Add($"Job has no name");
+                    if (string.IsNullOrWhiteSpace(job.OutputFolder))
+                        errors.Add($"Job '{job.Name}' has no output folder");
+                    if (string.IsNullOrWhiteSpace(job.EnvironmentName))
+                        errors.Add($"Job '{job.Name}' has no environment specified");
+                    else if (!configFile.Environments.Any(e => e.Name == job.EnvironmentName))
+                        errors.Add($"Job '{job.Name}' references non-existent environment '{job.EnvironmentName}'");
+                    if (string.IsNullOrWhiteSpace(job.ProfileName))
+                        errors.Add($"Job '{job.Name}' has no profile specified");
+                    else if (!configFile.Profiles.Any(p => p.Name == job.ProfileName))
+                        errors.Add($"Job '{job.Name}' references non-existent profile '{job.ProfileName}'");
+                }
+            }
+
+            // Display validation results
+            if (errors.Count > 0)
+            {
+                Console.WriteLine("\n*** CONFIGURATION ERRORS ***");
+                foreach (var error in errors)
+                {
+                    Console.WriteLine($"ERROR: {error}");
+                }
+            }
+
+            if (warnings.Count > 0)
+            {
+                Console.WriteLine("\n*** CONFIGURATION WARNINGS ***");
+                foreach (var warning in warnings)
+                {
+                    Console.WriteLine($"WARNING: {warning}");
+                }
+            }
+
+            if (errors.Count == 0 && warnings.Count == 0)
+            {
+                Console.WriteLine("\nConfiguration validation passed!");
+            }
+            else if (errors.Count == 0)
+            {
+                Console.WriteLine($"\nConfiguration is valid but has {warnings.Count} warning(s).");
+            }
+            else
+            {
+                Console.WriteLine($"\nConfiguration has {errors.Count} error(s) and {warnings.Count} warning(s).");
+                Console.WriteLine("Please review and correct the configuration.");
+            }
+
+            Console.WriteLine("Press any key to continue...");
+            Console.ReadKey();
+        }
+
+        static void TestConnection(ConnectionConfig connectionConfig)
+        {
+            Console.WriteLine("\n=== Testing Database Connection ===");
+            
+            try
+            {
+                // Create the appropriate connection provider based on the provider type
+                var connectionProvider = connectionConfig.Provider;
+                var providerType = Type.GetType("Pivet.Data.Connection." + connectionProvider + "Connection");
+                
+                if (providerType == null)
+                {
+                    Console.WriteLine("❌ ERROR: Unable to find the specified database provider: " + connectionProvider);
+                    return;
+                }
+
+                var dbProvider = Activator.CreateInstance(providerType) as IConnectionProvider;
+                dbProvider.SetParameters(connectionConfig);
+                
+                Console.WriteLine($"🔄 Testing connection to: {connectionConfig.TNS}");
+                Console.WriteLine($"   User: {connectionConfig.BootstrapParameters.User}");
+                Console.WriteLine($"   TNS Admin: {connectionConfig.TNS_ADMIN}");
+                if (!string.IsNullOrWhiteSpace(connectionConfig.Schema))
+                {
+                    Console.WriteLine($"   Schema: {connectionConfig.Schema}");
+                }
+                
+                Console.WriteLine("   Connecting...");
+                
+                var connectionResult = dbProvider.GetConnection();
+                
+                if (connectionResult.Item2) // Success
+                {
+                    // Test a simple query to make sure the connection really works
+                    using (var conn = connectionResult.Item1)
+                    {
+                        try
+                        {
+                            using (var cmd = new OracleCommand("SELECT 1 FROM DUAL", conn))
+                            {
+                                var result = cmd.ExecuteScalar();
+                                Console.WriteLine("✅ SUCCESS: Database connection test passed!");
+                                Console.WriteLine("   Connected successfully and executed test query.");
+                                
+                                // Show some additional connection info
+                                Console.WriteLine($"   Oracle Version: {conn.ServerVersion}");
+                                Console.WriteLine($"   Database Name: {conn.DatabaseName}");
+                            }
+                        }
+                        catch (Exception queryEx)
+                        {
+                            Console.WriteLine("⚠️  WARNING: Connected to database but test query failed:");
+                            Console.WriteLine($"   {queryEx.Message}");
+                        }
+                        finally
+                        {
+                            conn.Close();
+                        }
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("❌ FAILED: Unable to connect to database");
+                    Console.WriteLine($"   Error: {connectionResult.Item3}");
+                    
+                    // Provide some troubleshooting hints
+                    Console.WriteLine("\n💡 Troubleshooting tips:");
+                    Console.WriteLine("   • Check that TNS_ADMIN path exists and contains tnsnames.ora");
+                    Console.WriteLine("   • Verify TNS connection name exists in tnsnames.ora");
+                    Console.WriteLine("   • Confirm username and password are correct");
+                    Console.WriteLine("   • Ensure database is running and accessible");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("❌ EXCEPTION: An unexpected error occurred during connection test:");
+                Console.WriteLine($"   {ex.Message}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"   Inner Exception: {ex.InnerException.Message}");
+                }
+            }
+            
+            Console.WriteLine("\nPress any key to continue...");
+            Console.ReadKey();
         }
     }
 }
