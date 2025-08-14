@@ -331,12 +331,22 @@ namespace Pivet
                 return;
             }
 
+            if (wantsBuilder)
+            {
+                if (File.Exists(configFile) == false)
+                {
+                    ConfigBuilder.RunBuilder();
+                }
+                else
+                {
+                    ConfigBuilder.RunBuilder(configFile);
+                }
+                Console.WriteLine("Configuration Builder finished.");
+                return;
+            }
+
             if (File.Exists(configFile) == false)
             {
-                if (wantsBuilder)
-                {
-                    configFile = ConfigBuilder.RunBuilder();
-                }
 
                 if (configFile == "")
                 {
@@ -346,14 +356,7 @@ namespace Pivet
             }
             else
             {
-                if (wantsBuilder)
-                {
-                    Console.Write("Found an existing config file, would you like to modify it? (y/n)");
-                    if (Console.ReadLine() == "y")
-                    {
-                        configFile = ConfigBuilder.RunBuilder(configFile);
-                    }
-                }
+                
             }
 
             string j = File.ReadAllText(configFile);
