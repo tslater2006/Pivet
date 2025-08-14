@@ -122,21 +122,50 @@ namespace Pivet.Data
             return new ChangedItem(filePath, oprID);
         }
 
-        private static void CanonicalizeItem(JToken token)
+        public static void CanonicalizeItem(JToken token)
         {
             switch (token.Type)
             {
                 case JTokenType.Object:
                     var obj = (JObject)token;
                     var properties = obj.Properties().ToList();
-                    properties.Sort((p1, p2) => string.CompareOrdinal(p1.Name, p2.Name));
-
-                    obj.RemoveAll();
-
-                    foreach (var property in properties)
+                    
+                    // Special handling for objects with TableName property (related tables)
+                    var tableNameProperty = properties.FirstOrDefault(p => p.Name == "TableName");
+                    if (tableNameProperty != null)
                     {
-                        CanonicalizeItem(property.Value);
-                        obj.Add(property);
+                        // Create ordered list with TableName first, then others alphabetically
+                        var orderedProperties = new List<JProperty>();
+                        
+                        // Add TableName first
+                        orderedProperties.Add(tableNameProperty);
+                        
+                        // Add all other properties alphabetically
+                        var otherProps = properties.Where(p => p.Name != "TableName")
+                                                  .OrderBy(p => p.Name, StringComparer.Ordinal)
+                                                  .ToList();
+                        orderedProperties.AddRange(otherProps);
+                        
+                        // Rebuild object in desired order
+                        obj.RemoveAll();
+                        foreach (var prop in orderedProperties)
+                        {
+                            CanonicalizeItem(prop.Value);
+                            obj.Add(prop);
+                        }
+                    }
+                    else
+                    {
+                        // Standard alphabetical sorting for all other objects
+                        properties.Sort((p1, p2) => string.CompareOrdinal(p1.Name, p2.Name));
+
+                        obj.RemoveAll();
+
+                        foreach (var property in properties)
+                        {
+                            CanonicalizeItem(property.Value);
+                            obj.Add(property);
+                        }
                     }
                     break;
 
@@ -330,8 +359,8 @@ namespace Pivet.Data
                             var dataTable = reader.GetSchemaTable();
                             while (reader.Read())
                             {
-                                var rawItem = DataItemFromReader(dataTable, reader);
-                                relatedTableData.Rows.Add(rawItem);
+                                var relatedRow = RelatedRowFromReader(dataTable, reader);
+                                relatedTableData.Rows.Add(relatedRow);
                             }
                         }
 
@@ -365,6 +394,22 @@ namespace Pivet.Data
             }
 
             return item;
+        }
+
+        public static RawDataRelatedRow RelatedRowFromReader(DataTable dataTable, OracleDataReader reader)
+        {
+            RawDataRelatedRow row = new RawDataRelatedRow();
+
+            object[] vals = new object[dataTable.Rows.Count];
+            int foo = reader.GetValues(vals);
+
+            for(var x = 0; x < dataTable.Rows.Count; x++)
+            {
+                var columnName = dataTable.Rows[x].ItemArray[0];
+                row.Add(columnName.ToString(), vals[x]);
+            }
+
+            return row;
         }
 
         public void TestRelatedTables(string outputPath)
@@ -406,7 +451,7 @@ namespace Pivet.Data
 
     }
 
-    class RawDataItem
+    public class RawDataItem
     {
         public Dictionary<string, object> Fields = new Dictionary<string, object>();
         public List<RawDataRelatedTable> RelatedTables = new List<RawDataRelatedTable>();
@@ -435,10 +480,16 @@ namespace Pivet.Data
 
     }
 
-    class RawDataRelatedTable
+    public class RawDataRelatedRow : Dictionary<string, object>
+    {
+        // Inherits all Dictionary functionality
+        // Serializes directly as {key: value, key: value} without wrapper
+    }
+
+    public class RawDataRelatedTable
     {
         public string TableName;
-        public List<RawDataItem> Rows = new List<RawDataItem>();
+        public List<RawDataRelatedRow> Rows = new List<RawDataRelatedRow>();
     }
 
 }

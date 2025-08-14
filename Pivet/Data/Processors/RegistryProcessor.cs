@@ -112,7 +112,7 @@ namespace Pivet.Data.Processors
                                             var attrDataTable = attrReader.GetSchemaTable();
                                             while (attrReader.Read())
                                             {
-                                                attrs.Rows.Add(RawDataProcessor.DataItemFromReader(attrDataTable, attrReader));
+                                                attrs.Rows.Add(RawDataProcessor.RelatedRowFromReader(attrDataTable, attrReader));
                                             }
                                         }
 
