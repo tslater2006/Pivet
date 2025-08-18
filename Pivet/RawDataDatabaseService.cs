@@ -339,7 +339,7 @@ namespace Pivet
                 var jsonObject = JObject.FromObject(sampleItem);
                 
                 // Apply canonicalization like RawDataProcessor does
-                RawDataProcessor.CanonicalizeItem(jsonObject);
+                Data.Formatters.JsonRawDataFormatter.CanonicalizeItem(jsonObject);
                 
                 var jsonPreview = jsonObject.ToString(Formatting.Indented);
                 

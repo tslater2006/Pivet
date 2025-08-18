@@ -1,6 +1,8 @@
 ﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Oracle.ManagedDataAccess.Client;
+using Pivet.Data.Formatters;
+using Pivet.GUI;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -72,7 +74,7 @@ namespace Pivet.Data
 
                 foreach (RawDataItem item in _item.Value)
                 {
-                    var changedItem = SaveRawDataItem(outputFolder, _item.Key.NamePattern, item);
+                    var changedItem = SaveRawDataItem(outputFolder, _item.Key.NamePattern, item, _item.Key);
 
                     changedItems.Add(changedItem);
                 }
@@ -82,7 +84,7 @@ namespace Pivet.Data
         }
 
 
-        private ChangedItem SaveRawDataItem(string path, string pattern, RawDataItem item)
+        private ChangedItem SaveRawDataItem(string path, string pattern, RawDataItem item, RawDataEntry rawDataEntry)
         {
             /* build out file name */
             Regex placeHolder = new Regex("{([^}]+)}");
@@ -112,74 +114,36 @@ namespace Pivet.Data
             }
             
 
+            // Get the formatter for this raw data entry
+            var formatter = RawDataFormatterService.GetFormatter(rawDataEntry.Formatter);
+            
+            // Update file extension based on formatter
+            var fileExtension = "." + formatter.FileExtension;
+            if (!filePath.EndsWith(fileExtension, StringComparison.OrdinalIgnoreCase))
+            {
+                // If the pattern doesn't include the extension, or has wrong extension, update it
+                var lastDotIndex = filePath.LastIndexOf('.');
+                if (lastDotIndex > filePath.LastIndexOf(Path.DirectorySeparatorChar))
+                {
+                    // Replace existing extension
+                    filePath = filePath.Substring(0, lastDotIndex) + fileExtension;
+                }
+                else
+                {
+                    // Add extension
+                    filePath += fileExtension;
+                }
+            }
+
             Directory.CreateDirectory(Path.GetDirectoryName(filePath));
-            var itemAsJObject = JObject.FromObject(item);
-
-            CanonicalizeItem(itemAsJObject);
-
-            File.WriteAllText(filePath, itemAsJObject.ToString(Formatting.Indented));
+            
+            // Format the data using the resolved formatter
+            var formattedContent = formatter.FormatData(item, filePath);
+            File.WriteAllText(filePath, formattedContent);
 
             return new ChangedItem(filePath, oprID);
         }
 
-        public static void CanonicalizeItem(JToken token)
-        {
-            switch (token.Type)
-            {
-                case JTokenType.Object:
-                    var obj = (JObject)token;
-                    var properties = obj.Properties().ToList();
-                    
-                    // Special handling for objects with TableName property (related tables)
-                    var tableNameProperty = properties.FirstOrDefault(p => p.Name == "TableName");
-                    if (tableNameProperty != null)
-                    {
-                        // Create ordered list with TableName first, then others alphabetically
-                        var orderedProperties = new List<JProperty>();
-                        
-                        // Add TableName first
-                        orderedProperties.Add(tableNameProperty);
-                        
-                        // Add all other properties alphabetically
-                        var otherProps = properties.Where(p => p.Name != "TableName")
-                                                  .OrderBy(p => p.Name, StringComparer.Ordinal)
-                                                  .ToList();
-                        orderedProperties.AddRange(otherProps);
-                        
-                        // Rebuild object in desired order
-                        obj.RemoveAll();
-                        foreach (var prop in orderedProperties)
-                        {
-                            CanonicalizeItem(prop.Value);
-                            obj.Add(prop);
-                        }
-                    }
-                    else
-                    {
-                        // Standard alphabetical sorting for all other objects
-                        properties.Sort((p1, p2) => string.CompareOrdinal(p1.Name, p2.Name));
-
-                        obj.RemoveAll();
-
-                        foreach (var property in properties)
-                        {
-                            CanonicalizeItem(property.Value);
-                            obj.Add(property);
-                        }
-                    }
-                    break;
-
-                case JTokenType.Array:
-                    var array = (JArray)token;
-                    foreach (var item in array)
-                    {
-                        CanonicalizeItem(item);
-                    }
-                    var sortedArray = new JArray(array.OrderBy(t => t.ToString(), StringComparer.Ordinal));
-                    array.Replace(sortedArray);
-                    break;
-            }
-        }
 
         private (List<string> keyFields, List<string> relatedTables) DiscoverRelatedTables(RawDataEntry item)
         {

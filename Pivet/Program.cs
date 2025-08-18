@@ -2,6 +2,7 @@
 using Newtonsoft.Json.Linq;
 using NStack;
 using Pivet.Data;
+using Pivet.Data.Formatters;
 using Pivet.GUI;
 using System;
 using System.Collections;
@@ -221,9 +222,18 @@ namespace Pivet
                     Logger.Write("Loaded plugin: " + file.Name);
                     Assembly assembly = Assembly.LoadFrom(file.FullName);
 
-                    if (assembly.GetTypes().Where(p => (typeof(IDataProcessor).IsAssignableFrom(p) && !p.IsInterface && !p.IsAbstract)).Count() > 0)
+                    bool hasDataProcessors = assembly.GetTypes().Where(p => (typeof(IDataProcessor).IsAssignableFrom(p) && !p.IsInterface && !p.IsAbstract)).Count() > 0;
+                    bool hasFormatters = assembly.GetTypes().Where(p => (typeof(IRawDataFormatter).IsAssignableFrom(p) && !p.IsInterface && !p.IsAbstract)).Count() > 0;
+                    
+                    if (hasDataProcessors || hasFormatters)
                     {
                         LoadedAssemblies.Add(assembly);
+                        
+                        if (hasFormatters)
+                        {
+                            // Refresh formatter cache to include newly loaded formatters
+                            RawDataFormatterService.RefreshFormatterCache();
+                        }
                     }
                 }
             }

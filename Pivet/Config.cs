@@ -98,6 +98,10 @@ namespace Pivet
 
         [JsonProperty(Required = Required.Default)]
         public List<string> RelatedBlacklist = new List<string>();
+
+        [JsonProperty(Required = Required.Default)]
+        public string Formatter = "JsonFormatter";
+        
         public override string ToString()
         {
             return Record;
