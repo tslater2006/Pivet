@@ -1155,6 +1155,14 @@ namespace PeopleCodeLib.Decoder
                             OutputText.Length--;
                         }
                         nIndent--;
+
+                        /* ensure we are at the start of a new line, this might not happen if the
+                         * last statement in the public/protected headers didn't have semicolon */
+                        if (OutputText[OutputText.Length - 1]  != '\n')
+                        {
+                            Write("\r\n");
+                        }
+
                         WritePadding();
                         Write("private");
                         Write("\r\n");
@@ -1319,6 +1327,14 @@ namespace PeopleCodeLib.Decoder
                             OutputText.Length--;
                         }
                         nIndent--;
+
+                        /* ensure we are at the start of a new line, this might not happen if the
+                         * last statement in the public/protected headers didn't have semicolon */
+                        if (OutputText[OutputText.Length - 1] != '\n')
+                        {
+                            Write("\r\n");
+                        }
+
                         WritePadding();
                         Write("protected");
                         Write("\r\n");
